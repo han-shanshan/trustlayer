@@ -30,21 +30,31 @@ def add_noise_to_string(original, noise_level=0.1):
     return ''.join(original_list)
 
 
-class PIIDetector:
+class PIIProtector:
     def __init__(self):
         self.pipeline = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english",
                                  aggregation_strategy="simple")
         self.noise_type = "random"
 
-    def get_detection_results(self, text):
+    def add_mask(self, text):
         scores = self.pipeline(text)
-        print(f"detection scores: {scores}")
+        for d in scores:
+            if d['score'] > 0.5:  # and d['entity_group'] in ['PER', 'ORG']:
+                new_word = self.add_mask_for_string(d['word'])
+                text = text[:d['start']] + new_word + text[d['end']:]
+        return text
+
+    def add_mask_for_string(self, token):
+        if self.noise_type == "random":
+            return add_noise_to_string(token, noise_level=0.5)
+        else:
+            raise ValueError("Not implemented!")
 
 
 if __name__ == '__main__':
-    detector = PIIDetector()
-    detector.get_detection_results("Aiden Chaoyang He is Co-founder of FedML, Inc., "
+    protector = PIIProtector()
+    print(protector.add_mask("Aiden Chaoyang He is Co-founder of FedML, Inc., "
                                    "a Silicon Valley-based company building machine learning infrastructure to train, "
                                    "serve, and deploy AI models easily, economically, and securely, "
                                    "with holistic support of high-performance ML libraries, "
-                                   "user-friendly AIOps, and a well-managed distributed GPU Cloud.")
+                                   "user-friendly AIOps, and a well-managed distributed GPU Cloud."))
