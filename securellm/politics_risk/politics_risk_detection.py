@@ -1,4 +1,5 @@
-from trustworthy.securellm.toxicity.toxicity_detector_toxic_bert import ToxicityDetectorToxicBert
+from securellm.detector_base import BaseSafetyDetector
+from securellm.toxicity.toxicity_detector_toxic_bert import ToxicityDetectorToxicBert
 
 from transformers import AutoModelForSequenceClassification, pipeline, AutoTokenizer
 
@@ -10,7 +11,7 @@ model: https://huggingface.co/cardiffnlp/tweet-topic-21-multi
 """
 
 
-class PoliticalRiskDetector:
+class PoliticalRiskDetector(BaseSafetyDetector):
     def __init__(self):
         # self.pipeline = pipeline("sentiment-analysis") # distilbert-base-uncased-finetuned-sst-2-english
         self.toxicity_detector = ToxicityDetectorToxicBert()
@@ -18,17 +19,17 @@ class PoliticalRiskDetector:
         model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/tweet-topic-21-multi")
         self.pipeline = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
-    def get_detection_results(self, text):
-        if not self.toxicity_detector.get_is_toxic(text):
-            print(f"the input \"{text}\" does not have political risks")
+    def get_detection_results(self, input_or_output_text, text2=None):
+        if not self.toxicity_detector.get_is_toxic(input_or_output_text):
+            print(f"the input \"{input_or_output_text}\" does not have political risks")
             return
 
-        score = self.pipeline(text)[0]
+        score = self.pipeline(input_or_output_text)[0]
         print(f"detection scores: {score}")
         if score['score'] > 0.5 and score['label'] == 'news_&_social_concern':
-            print(f"the input \"{text}\" has political risks")
+            print(f"the input \"{input_or_output_text}\" has political risks")
         else:
-            print(f"the input \"{text}\" does not have political risks")
+            print(f"the input \"{input_or_output_text}\" does not have political risks")
 
 
 if __name__ == '__main__':

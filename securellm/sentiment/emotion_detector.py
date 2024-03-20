@@ -1,5 +1,7 @@
 from transformers import pipeline
 
+from securellm.detector_base import BaseSafetyDetector
+
 """
 https://huggingface.co/michellejieli/emotion_text_classifier
 emotions: anger, disgust, fear, joy, neutral, sadness, surprise
@@ -8,12 +10,12 @@ Detection score: {'label': 'joy', 'score': 0.9887555241584778}
 """
 
 
-class EmotionDetector:
+class EmotionDetector(BaseSafetyDetector):
     def __init__(self):
         # self.pipeline = pipeline("sentiment-analysis") # distilbert-base-uncased-finetuned-sst-2-english
         self.pipeline = pipeline("sentiment-analysis", model="michellejieli/emotion_text_classifier")
 
-    def get_detection_results(self, text):
+    def get_detection_results(self, text, optional_text=None):
         scores = self.pipeline(text)
         print(f"detection scores: {scores}")
         if scores[0]['score'] > 0.5:

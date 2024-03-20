@@ -1,5 +1,7 @@
 from transformers import pipeline
 
+from securellm.detector_base import BaseSafetyDetector
+
 """
 https://huggingface.co/vectara/hallucination_evaluation_model
 
@@ -17,14 +19,14 @@ Sample inputs:
 """
 
 
-class HallucinationDetector:
+class HallucinationDetector(BaseSafetyDetector):
     def __init__(self):
         self.pipeline = pipeline("text-classification", model="vectara/hallucination_evaluation_model")
 
-    def get_detection_results(self, texts):
+    def get_detection_results(self, output, prompts=None):
         # the original scores: 1 - fact; 0 - hallucination.
         # We use 1 - score to be consistent with other detection methods
-        score = 1 - self.pipeline(texts)[0]['score']
+        score = 1 - self.pipeline(output)[0]['score']
 
         print(f"detection scores: {score}")
         if score > 0.5:

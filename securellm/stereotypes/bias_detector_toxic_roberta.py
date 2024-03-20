@@ -1,5 +1,7 @@
 from transformers import pipeline
 
+from securellm.detector_base import BaseSafetyDetector
+
 """
 https://huggingface.co/unitary/unbiased-toxic-roberta
 Example: "'shut up, you idoit!'"
@@ -23,14 +25,14 @@ The input "shut up, you idiot!" is detected as ['toxicity', 'insult']
 """
 
 
-class BiasDetectorToxicRoberta:
+class BiasDetectorToxicRoberta(BaseSafetyDetector):
     def __init__(self):
         self.pipeline = pipeline('text-classification',
                                  model='unitary/unbiased-toxic-roberta',
                                  function_to_apply='sigmoid',
                                  return_all_scores=True)
 
-    def get_detection_results(self, text):
+    def get_detection_results(self, text, optional_text=None):
         scores = self.pipeline(text)
         # print(f"detection scores: {scores}")
         labels = []
