@@ -13,6 +13,11 @@ MODEL_PATH = "multi_task_bert_test"
 TASKS = ['semantics']
 MODEL_NAME = "prajjwal1/bert-mini"  # "bert-base-uncased"
 
+# 16 * 7B *
+# 1 模型 1 gradient optimization 2
+# + 16 * 7 +
+#
+# 4*16*
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
 def multi_label_metrics(predictions, labels, threshold=0.5):
