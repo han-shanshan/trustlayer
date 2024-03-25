@@ -1,5 +1,5 @@
-from securellm.detector_base import BaseSafetyDetector
-from securellm.toxicity.toxicity_detector_toxic_bert import ToxicityDetectorToxicBert
+from trust_libs.securellm.detector_base import BaseTrustDetector
+from trust_libs.securellm.toxicity.toxicity_detector_toxic_bert import ToxicityDetectorToxicBert
 
 from transformers import AutoModelForSequenceClassification, pipeline, AutoTokenizer
 
@@ -11,7 +11,7 @@ model: https://huggingface.co/cardiffnlp/tweet-topic-21-multi
 """
 
 
-class PoliticalRiskDetector(BaseSafetyDetector):
+class PoliticalRiskDetector(BaseTrustDetector):
     def __init__(self):
         # self.pipeline = pipeline("sentiment-analysis") # distilbert-base-uncased-finetuned-sst-2-english
         self.toxicity_detector = ToxicityDetectorToxicBert()

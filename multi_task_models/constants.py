@@ -1,2 +1,0 @@
-SEMANTIC_TASK_NAME = "semantic"
-TOPIC_TASK_NAME = "topic"

@@ -1,6 +1,6 @@
 from transformers import pipeline
 
-from securellm.detector_base import BaseSafetyDetector
+from trust_libs.securellm.detector_base import BaseTrustDetector
 
 """
 https://huggingface.co/vectara/hallucination_evaluation_model
@@ -19,7 +19,7 @@ Sample inputs:
 """
 
 
-class HallucinationDetector(BaseSafetyDetector):
+class HallucinationDetector(BaseTrustDetector):
     def __init__(self):
         self.pipeline = pipeline("text-classification", model="vectara/hallucination_evaluation_model")
 

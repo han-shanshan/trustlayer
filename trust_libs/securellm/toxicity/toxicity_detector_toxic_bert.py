@@ -1,5 +1,5 @@
 from transformers import pipeline
-from securellm.detector_base import BaseSafetyDetector
+from trust_libs.securellm.detector_base import BaseTrustDetector
 
 """
 https://huggingface.co/unitary/toxic-bert
@@ -14,23 +14,22 @@ The input "shut up, you idiot!" is detected as ['toxic', 'obscene', 'insult']
 """
 
 
-class ToxicityDetectorToxicBert(BaseSafetyDetector):
-
-    def __init__(self):
+class ToxicityDetectorToxicBert(BaseTrustDetector):
+    def __init__(self, config):
+        super().__init__(config)
         self.pipeline = pipeline('text-classification',
                                  model='unitary/toxic-bert', tokenizer='bert-base-uncased',
                                  function_to_apply='sigmoid', return_all_scores=True)
 
-    def get_detection_results(self, text, optional_text=None):
+    def get_detection_results(self, text, reference_text=None):
         scores = self.pipeline(text)[0]
         print(f"detection scores: {scores}")
-        labels = []
+        results = []
         for d in scores:
-            print(d)
-            if d['score'] > 0.5:
-                labels.append(d['label'])
-        print(f"The input \"{text}\" is detected as {labels}")
-        return scores
+            if d['score'] > self.boundary:
+                results.append((d['label'], d['score']))
+        print(f"The input \"{text}\" is detected as {results}")
+        return results
 
     def get_is_toxic(self, text):
         scores = self.pipeline(text)[0]
