@@ -1,0 +1,9 @@
+preprocessing:
+  prompt: "Despite being addicted to online shopping, she always hunted for cheap deals to mitigate her poor financial situation."  # "shut up, you idiot!" # "Today is a good day to have a good day."
+
+preprocessing_args:
+  enable_toxicity: true
+
+postprocessing_args:
+  enable_toxicity: true
+  enable_substitution: true
