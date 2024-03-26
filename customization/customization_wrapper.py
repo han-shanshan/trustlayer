@@ -1,7 +1,7 @@
-from wrappers.substitute_sensitive_info import SubstituteWrapper
+from customization.substitute_sensitive_info import SubstituteWrapper
 
 
-class TrustWrapper:
+class CustomizationWrapper:
     def __init__(self, config):
         self.wrappers = []
         if 'enable_substitution' in config and config['enable_substitution']:

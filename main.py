@@ -2,7 +2,7 @@ import sys
 import yaml
 from llm_inference.inference import Inference
 from trust_libs.trust_detector import TrustDetector
-from wrappers.trust_wrapper import TrustWrapper
+from customization.customization_wrapper import CustomizationWrapper
 
 if __name__ == '__main__':
     with open("config.yaml", "r") as file:
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         sys.exit(1)  # Exit the entire script
     print("---------------------Post-process output---------------------")
 
-    wrapper = TrustWrapper(config=config['postprocessing_args'])
+    wrapper = CustomizationWrapper(config=config['postprocessing_args'])
     output = wrapper.get_post_process_text(raw_output)
     print(f"output = {output}")
 

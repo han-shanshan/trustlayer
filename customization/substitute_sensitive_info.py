@@ -1,5 +1,5 @@
 from storage.basic_data_storage_operations import read_substitutions_from_file
-from wrappers.wrapper_base import BaseWrapper
+from customization.wrapper_base import BaseWrapper
 
 
 class SubstituteWrapper(BaseWrapper):
