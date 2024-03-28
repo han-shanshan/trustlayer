@@ -119,7 +119,7 @@ class URLDetectionWrapper(BaseWrapper):
                 result = result + f"Found URL: {url}. "
                 if is_url_reachable(url):
                     result = result + f"The URL {url} is reachable. "
-                    # if is_url_malicious(url):
+                    # if is_url_malicious(url): https://huggingface.co/DunnBC22/codebert-base-Malicious_URLs
                     #     result = result + f"Warning: The URL {url} is malicious."
                     # else:
                     #     result = result + f"The URL {url} is not malicious."
