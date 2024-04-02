@@ -1,50 +1,69 @@
+import json
+
 import numpy as np
 import evaluate
-from datasets import load_dataset
+from datasets import load_dataset, DatasetDict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 from transformers import TrainingArguments, Trainer
-from peft import LoraConfig, get_peft_model, TaskType, load_peft_weights, PeftConfig
+from peft import LoraConfig, get_peft_model, TaskType, load_peft_weights
 import torch
-import json
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
+from datasets import concatenate_datasets
+from multitask_lora.bert.constants import TOPIC_TASK_NAME
+from multitask_lora.bert.data_processor import DataProcessor
 
+TASK_NAME = TOPIC_TASK_NAME
 MODEL_NAME = "google-bert/bert-base-uncased"  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
-lora_storage_path = MODEL_NAME.split("/")[1]
-OUTPUT_DIR = "bert_peft_trainer"
+lora_storage_path = MODEL_NAME.split("/")[1] + "_" + TASK_NAME
+OUTPUT_DIR = "bert_peft_trainer_" + TASK_NAME
+
 
 def get_encoded_datasets(tokenizer):
-    datasets = load_dataset("sem_eval_2018_task_1", "subtask5.english")
-    # sentiment_dataset = concatenate_datasets([dataset["train"], dataset["test"], dataset["validation"]])
-    label_dicts = {}
-    # for task_name, dataset in datasets.items():
-    #     print(task_name)
-    #     print(datasets[task_name]["train"][0])
-    label_dicts = [label for label in datasets['train'].features.keys() if
-                   label not in ['ID', 'Tweet']]
-    id2label = {idx: label for idx, label in enumerate(label_dicts)}
-    label2id = {label: idx for idx, label in enumerate(label_dicts)}
+    data_processor = DataProcessor(tokenizer=tokenizer)
+    data_processor.task_name = TASK_NAME
+    dataset = load_dataset("cardiffnlp/tweet_topic_multi")
 
-    def preprocess_data(examples):
-        # take a batch of texts
-        text = examples["Tweet"]
+    label_names = data_processor.prepare_label_dict_for_a_task( dataset)
+    print(f"label names = {label_names}")
 
-        # encode them
-        encoding = tokenizer(text, padding="max_length", truncation=True, max_length=128)
-        # add labels
-        labels_batch = {k: examples[k] for k in examples.keys() if k in label_dicts}
+    idx = 0
+    id2labels = {}
+    label2ids = {}
+    for label in label_names:
+        id2labels[idx] = label
+        label2ids[label] = idx
+        idx += 1
 
-        # create numpy array of shape (batch_size, num_labels)
-        labels_matrix = np.zeros((len(text), len(label_dicts)))
-        # fill numpy array
-        for idx, label in enumerate(label_dicts):
-            labels_matrix[:, idx] = labels_batch[label]
-        encoding["labels"] = labels_matrix.tolist()
-        return encoding
+    # data_processor.set_labels(labels=labels)
+    data_processor.set_labels(labels=label_names)
 
-    encoded_dataset = datasets.map(preprocess_data, batched=True,
-                                   remove_columns=datasets['train'].column_names)
-    encoded_dataset.set_format("torch")
-    return encoded_dataset, id2label, label2id, label_dicts
+    encoded_datasets = {}
+    D = {}
+    data_processor.labels = label_names
+
+    data_processor.set_task_name(TASK_NAME)
+    encoded_dataset = dataset.map(data_processor.process_data_diff_datasets,  # preprocess_data,
+                    batched=True, remove_columns=data_processor.get_remove_column_names(dataset))
+
+    for phase in encoded_dataset.keys():
+        # Check if the phase already exists in D
+        original_phase_name = phase
+        if phase not in ["train", "test",
+                         "validation"]:  # in case in some datasets the phases are called different names, e.g., "train_2020"
+            for p in ["train", "test", "validation"]:
+                if p in phase:
+                    phase = p
+                    break
+        if phase in D:
+            # Concatenate the new dataset with the existing one
+            D[phase] = concatenate_datasets([D[phase], encoded_dataset[original_phase_name]])
+        else:
+            D[phase] = encoded_dataset[original_phase_name]
+
+    final_dataset = DatasetDict(D)
+    # d2label[idx] for idx, label in enumerate(encoded_dataset['train'][0]['labels']) if label == 1.0]}")
+    final_dataset.set_format("torch")
+    return final_dataset, id2labels, label2ids, label_names
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
@@ -87,8 +106,6 @@ def train():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     encoded_dataset, id2label, label2id, label_dicts = get_encoded_datasets(tokenizer)
-
-    # model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=5)
 
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME,  # "bert-base-uncased",
                                                                problem_type="multi_label_classification",
@@ -143,6 +160,32 @@ def train():
     # bert_peft_trainer.model.save_pretrained(lora_storage_path)
     model.save_pretrained(lora_storage_path)
 
+#
+# def inf(text):
+#     load_path = OUTPUT_DIR + "/checkpoint-500"
+#
+#     # config = AutoConfig.from_pretrained(load_path)
+#
+#     lora_weights = load_peft_weights(load_path)
+#
+#     tokenizer = AutoTokenizer.from_pretrained(load_path)
+#     id2label = config.id2label
+#     encoding = tokenizer(text, return_tensors="pt")
+#
+#     model = AutoModelForSequenceClassification.from_pretrained(load_path)
+#     encoding = {k: v.to(model.device) for k, v in encoding.items()}
+#     outputs = model(**encoding)
+#     logits = outputs.logits
+#
+#     # apply sigmoid + threshold
+#     sigmoid = torch.nn.Sigmoid()
+#     probs = sigmoid(logits.squeeze().cpu())
+#     predictions = np.zeros(probs.shape)
+#     predictions[np.where(probs >= 0.5)] = 1
+#     # turn predicted id's into actual label names
+#     predicted_labels = [id2label[idx] for idx, label in enumerate(predictions) if label == 1.0]
+#     print(predicted_labels)
+
 
 def inf(text):
     # https://huggingface.co/docs/transformers/main/en/peft
@@ -158,8 +201,8 @@ def inf(text):
 
     base_model = AutoModelForSequenceClassification.from_pretrained(config['base_model_name_or_path'],
                                                                     problem_type="multi_label_classification",
-                                                                    num_labels=len(config['semantic']),
-                                                                    id2label=config['semantic']
+                                                                    num_labels=len(config['topic']),
+                                                                    id2label=config['topic']
                                                                     )
     base_model.load_adapter(load_lora_path)
 
@@ -180,7 +223,7 @@ def inf(text):
     predictions = np.zeros(probs.shape)
     predictions[np.where(probs >= 0.5)] = 1
     # turn predicted id's into actual label names
-    predicted_labels = [config['semantic'][idx] for idx, label in enumerate(predictions) if label == 1.0]
+    predicted_labels = [config['topic'][idx] for idx, label in enumerate(predictions) if label == 1.0]
     print(predicted_labels)
 
 
