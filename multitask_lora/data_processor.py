@@ -1,7 +1,8 @@
 from transformers import AutoTokenizer, AutoConfig
 import numpy as np
-from constants import SEMANTIC_TASK_NAME, TOPIC_TASK_NAME
 from datasets import concatenate_datasets, load_dataset, DatasetDict
+
+from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME
 
 
 class DataProcessor():

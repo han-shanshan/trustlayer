@@ -1,6 +1,5 @@
-from multitask_lora.bert.constants import TOPIC_TASK_NAME
+from multitask_lora.constants import TOPIC_TASK_NAME
 from multitask_lora.inference_engine import InferenceEngine
-from multitask_lora.training_engine import TrainingEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'

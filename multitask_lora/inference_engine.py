@@ -15,7 +15,7 @@ https://github.com/huggingface/peft/discussions/661
 class InferenceEngine:
     def __init__(self, default_task):
         self.task_name = default_task
-        general_config_file_path = 'inference_config.json'
+        general_config_file_path = '../inference_config.json'
 
         with open(general_config_file_path, 'r') as file:
             self.config = json.load(file)

@@ -4,7 +4,7 @@ from transformers import TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
-from multitask_lora.bert.data_processor import DataProcessor
+from multitask_lora.data_processor import DataProcessor
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
