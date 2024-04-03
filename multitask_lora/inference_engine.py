@@ -27,17 +27,16 @@ class InferenceEngine:
         self.task_name = task_type
 
     def get_checkpoint_directory(self, checkpoint_id=None):
-        directory = self.base_model_name.split("/")[1] + "_" + self.task_name
-        if os.path.isdir(directory):
-            entries = os.listdir(directory)  # List all entries in the directory
+        directory = self.base_model_name.split("/")[1] + "-" + self.task_name
+        final_model_path = directory + "-final"
+        if os.path.isdir(final_model_path):
+            entries = os.listdir(final_model_path)  # List all entries in the directory
             if len(entries) > 0:
-                return directory
-        directory = directory.split("-")[0] + "_peft_trainer_" + self.task_name
+                return final_model_path
         if checkpoint_id is not None and checkpoint_id > 0:
             return directory + "/checkpoint-" + str(checkpoint_id)
         max_checkpoint_id = -1
         pattern = re.compile(r'^(.*?)-(\d+)$')
-
         for filename in os.listdir(directory):
             match = pattern.match(filename)
             if match:
@@ -66,5 +65,5 @@ class InferenceEngine:
         predictions = np.zeros(probs.shape)
         predictions[np.where(probs >= 0.5)] = 1
         # turn predicted id's into actual label names
-        predicted_labels = [self.config[self.task_name][idx] for idx, label in enumerate(predictions) if label == 1.0]
+        predicted_labels = [self.config[self.task_name][str(idx)] for idx, label in enumerate(predictions) if label == 1.0]
         return predicted_labels

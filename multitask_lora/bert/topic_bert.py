@@ -10,8 +10,8 @@ MODEL_NAME = "google-bert/bert-base-uncased"  # "prajjwal1/bert-small" #"nlptown
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
-    trainer.train()
+    # trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
+    # trainer.train()
 
     text = "i'm happy hahaha"
 

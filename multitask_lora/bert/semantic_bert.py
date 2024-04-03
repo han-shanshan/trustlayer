@@ -1,4 +1,5 @@
 from multitask_lora.bert.constants import SEMANTIC_TASK_NAME
+from multitask_lora.inference_engine import InferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 import os
 
@@ -12,7 +13,7 @@ if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=SEMANTIC_TASK_NAME)
     trainer.train()
-    # text = "i'm happy hahaha"
-    #
-    # inference_engine = InferenceEngine(default_task=TASK_NAME)
-    # print(inference_engine.inference(text))
+    text = "i'm happy hahaha"
+
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
+    print(inference_engine.inference(text))

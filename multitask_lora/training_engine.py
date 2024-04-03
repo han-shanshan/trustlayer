@@ -48,6 +48,8 @@ class TrainingEngine:
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
         data_processor = DataProcessor(tokenizer=tokenizer, task_name=self.task_name)
         encoded_dataset, id2label, label2id, label_dicts = data_processor.get_encoded_datasets()
+
+
         model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                    problem_type="multi_label_classification",
                                                                    num_labels=len(label_dicts),
