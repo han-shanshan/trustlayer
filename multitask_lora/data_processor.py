@@ -38,7 +38,7 @@ class DataProcessor:
         train_phase_name, _, _ = self.get_phase_names()
         if self.task_name is HALLUCINATION_TASK_NAME:
             hallucination_columns = dataset[train_phase_name].column_names
-            hallucination_columns.remove("answer_label_id")
+            hallucination_columns.remove("label")
             return hallucination_columns
         return dataset[train_phase_name].column_names
 
@@ -170,5 +170,6 @@ class DataProcessor:
                               return_tensors="pt")
 
     def process_hallucination_data(self, examples):
-        return self.tokenizer(examples["question"], examples["answer"], padding="max_length", truncation=True,
+        return self.tokenizer(text=examples["question"], text_pair=examples["answer"],
+                              padding="max_length", truncation=True,
                               max_length=128, return_tensors="pt")

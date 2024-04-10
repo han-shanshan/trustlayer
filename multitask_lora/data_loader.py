@@ -33,6 +33,9 @@ class DataLoader:
     @staticmethod
     def load_hallucination_data():
         dataset = load_dataset("cemuluoglakci/hallucination_evaluation")
+        for split in dataset.keys():
+            dataset[split] = dataset[split].rename_column("answer_label_id", "label")
+
         test_validation_split = dataset["train"].train_test_split(test_size=0.2)
         test_validation_split = test_validation_split["test"].train_test_split(test_size=0.5)
         dataset["validation"] = test_validation_split["train"]
