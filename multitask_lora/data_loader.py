@@ -1,5 +1,7 @@
 from datasets import load_dataset, DatasetDict
-from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME
+from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
+    HALLUCINATION_TASK_NAME
+import numpy as np
 
 
 class DataLoader:
@@ -15,6 +17,8 @@ class DataLoader:
             return self.load_gibberish_data()
         elif task_name == UNSAFE_PROMPT_TASK_NAME:
             return self.load_unsafe_prompt_data()
+        elif task_name == HALLUCINATION_TASK_NAME:
+            return self.load_hallucination_data()
         else:
             return None
 
@@ -24,7 +28,42 @@ class DataLoader:
         test_validation_split = dataset["test"].train_test_split(test_size=0.5)
         dataset["validation"] = test_validation_split["train"]
         dataset["test"] = test_validation_split["test"]
+        print(f"DatasetDict(dataset) = {DatasetDict(dataset)}")
         return DatasetDict(dataset)
+
+    def load_hallucination_data(self):
+        dataset = load_dataset("cemuluoglakci/hallucination_evaluation")
+        test_validation_split = dataset["train"].train_test_split(test_size=0.2)
+        test_validation_split = test_validation_split["test"].train_test_split(test_size=0.5)
+        dataset["validation"] = test_validation_split["train"]
+        dataset["test"] = test_validation_split["test"]
+
+        print(f"dataset = {dataset}")
+
+        print(f"====== {dataset['train'][0]}")
+        print(f"====== {dataset['validation'][0]}")
+        print(f"====== {dataset['test'][0]}")
+
+
+        # def map_labels(example):
+        #     if example['answer_label'] == 'valid':
+        #         example['answer_label'] = 0
+        #     elif example['answer_label'] == 'hallucination':
+        #         example['answer_label'] = 1
+        #     elif example['answer_label'] == 'irrelevant':
+        #         example['answer_label'] = 2
+        #     return example
+        #
+        # dataset = dataset.map(map_labels)
+
+        # test_validation_split = dataset["test"].train_test_split(test_size=0.5)
+        # dataset["validation"] = test_validation_split["train"]
+        # dataset["test"] = test_validation_split["test"]
+
+        # print(dataset["train"][0])
+        return dataset
+
+        # return self.filter_non_records(dataset, "text")
 
     def load_gibberish_data(self):
         # dataset = load_dataset("imdb")  #Sowmya15/gibberish_march22
@@ -39,11 +78,15 @@ class DataLoader:
             filtered_dataset_in_phase = dataset[phase].filter(lambda example: example[col_name] is not None)
             filtered_dataset[phase] = filtered_dataset_in_phase
             print(f"{phase}: {len(dataset[phase])} ==== {len(filtered_dataset[phase])}")
-        return DatasetDict(filtered_dataset)
+
+        def change_labels(example):
+            example['label'] = np.argmax(example['label'])
+        filtered_dataset = DatasetDict(filtered_dataset).map(change_labels)
+        return filtered_dataset
 
 
 if __name__ == '__main__':
-    data = DataLoader().load_data(GIBBERISH_TASK_NAME)
+    data = DataLoader().load_data(HALLUCINATION_TASK_NAME)
     # print(data.column_names)
     # print()
     # print(f"     {data['train'][0]}")
