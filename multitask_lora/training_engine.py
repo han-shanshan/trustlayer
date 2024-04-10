@@ -4,7 +4,7 @@ from transformers import TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
-from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME
+from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
 
 
@@ -53,12 +53,13 @@ class TrainingEngine:
         self.task_name = task_name
         self.training_args = training_args
         self.label_metrics = None
+        self.set_label_metrics()
 
     def set_task_type(self, task_name):
         self.task_name = task_name
 
-    def get_label_metrics(self):
-        if self.task_name is GIBBERISH_TASK_NAME:
+    def set_label_metrics(self):
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
             self.label_metrics = single_label_metrics
         else:
             self.label_metrics = multi_label_metrics
@@ -73,7 +74,7 @@ class TrainingEngine:
     # def get_problem_type(self):
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,
