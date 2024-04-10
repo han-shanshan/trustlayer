@@ -66,8 +66,7 @@ class DataLoader:
         # return self.filter_non_records(dataset, "text")
 
     def load_gibberish_data(self):
-        # dataset = load_dataset("imdb")  #Sowmya15/gibberish_march22
-        # dataset = load_dataset("Sowmya15/gibberish_march22")
+        # dataset = load_dataset("imdb")
         dataset = load_dataset("Sowmya15/March06_gibberish")
         return self.filter_non_records(dataset, "text")
 
@@ -78,11 +77,11 @@ class DataLoader:
             filtered_dataset_in_phase = dataset[phase].filter(lambda example: example[col_name] is not None)
             filtered_dataset[phase] = filtered_dataset_in_phase
             print(f"{phase}: {len(dataset[phase])} ==== {len(filtered_dataset[phase])}")
-
-        def change_labels(example):
-            example['label'] = np.argmax(example['label'])
-        filtered_dataset = DatasetDict(filtered_dataset).map(change_labels)
-        return filtered_dataset
+        #
+        # def change_labels(example):
+        #     example['label'] = np.argmax(example['label'])
+        # filtered_dataset = DatasetDict(filtered_dataset).map(change_labels)
+        return DatasetDict(filtered_dataset)
 
 
 if __name__ == '__main__':

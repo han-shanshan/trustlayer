@@ -6,6 +6,9 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
+import evaluate
+
+accuracy = evaluate.load("accuracy")
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
@@ -14,25 +17,6 @@ def multi_label_metrics(predictions, labels, threshold=0.5):
     sigmoid = torch.nn.Sigmoid()
     probs = sigmoid(torch.Tensor(predictions))
     # next, use threshold to turn them into integer predictions
-    y_pred = np.zeros(probs.shape)
-    y_pred[np.where(probs >= threshold)] = 1
-    # compute metrics
-    y_true = labels
-    f1_micro_average = f1_score(y_true=y_true, y_pred=y_pred, average='micro')
-    roc_auc = roc_auc_score(y_true, y_pred, average='micro')
-    accuracy = accuracy_score(y_true, y_pred)
-    # return as dictionary
-    metrics = {'f1': f1_micro_average,
-               'roc_auc': roc_auc,
-               'accuracy': accuracy}
-    return metrics
-
-
-def single_label_metrics(predictions, labels, threshold=0.5):
-    # apply sigmoid on predictions which are of shape (batch_size, num_labels)
-    softmax = torch.nn.Softmax()
-    probs = softmax(torch.Tensor(predictions))
-    # use threshold to turn them into integer predictions
     y_pred = np.zeros(probs.shape)
     y_pred[np.where(probs >= threshold)] = 1
     # compute metrics
@@ -60,18 +44,23 @@ class TrainingEngine:
 
     def set_label_metrics(self):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
-            self.label_metrics = single_label_metrics
+            self.label_metrics = self.compute_metrics_for_single_label_tasks
         else:
-            self.label_metrics = multi_label_metrics
+            self.label_metrics = self.compute_metrics_for_multilabel_tasks
 
-    def compute_metrics(self, p):
+    @staticmethod
+    def compute_metrics_for_multilabel_tasks(p):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-        result = self.label_metrics(
+        result = multi_label_metrics(
             predictions=preds,
             labels=p.label_ids)
         return result
 
-    # def get_problem_type(self):
+    @staticmethod
+    def compute_metrics_for_single_label_tasks(eval_pred):
+        predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=1)
+        return accuracy.compute(predictions=predictions, references=labels)
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
@@ -133,7 +122,7 @@ class TrainingEngine:
             args=self.training_args,
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
-            compute_metrics=self.compute_metrics,
+            compute_metrics=self.label_metrics,
         )
         bert_peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
