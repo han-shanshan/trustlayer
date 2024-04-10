@@ -1,6 +1,13 @@
 from multitask_lora.constants import SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME
 from multitask_lora.inference_engine import InferenceEngine
 from multitask_lora.training_engine import TrainingEngine
+import os
+import torch
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+if device.type == 'cuda':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 TASK_NAME = UNSAFE_PROMPT_TASK_NAME
 MODEL_NAME = "google-bert/bert-base-uncased"  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
