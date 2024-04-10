@@ -1,7 +1,8 @@
 from transformers import AutoTokenizer, AutoConfig
 import numpy as np
 from datasets import concatenate_datasets, load_dataset, DatasetDict
-from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME
+from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
+    HALLUCINATION_TASK_NAME
 from multitask_lora.data_loader import DataLoader
 
 
@@ -26,7 +27,7 @@ class DataProcessor:
     def get_phase_names(self):
         if self.task_name is TOPIC_TASK_NAME:
             return "train_2020", "test_2020", "validation_2020"
-        elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
+        elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
             return "train", "test", "validation"
         else:
             Exception("wrong task name")
@@ -35,7 +36,10 @@ class DataProcessor:
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
             return "text"
         train_phase_name, _, _ = self.get_phase_names()
-        # print(f"dataset[train_phase_name].column_names = {dataset[train_phase_name].column_names}")
+        if self.task_name is HALLUCINATION_TASK_NAME:
+            hallucination_columns = dataset[train_phase_name].column_names
+            hallucination_columns.remove("answer_label_id")
+            return hallucination_columns
         return dataset[train_phase_name].column_names
 
     def prepare_label_dict_for_a_task(self, dataset):
@@ -47,6 +51,8 @@ class DataProcessor:
             return ['clean', 'noise', 'word salad']
         elif self.task_name is UNSAFE_PROMPT_TASK_NAME:
             return ['safe', 'unsafe']
+        elif self.task_name is HALLUCINATION_TASK_NAME:
+            return ['valid', 'hallucination', 'irrelevant']
         elif self.task_name is TOPIC_TASK_NAME: # todo: check the dataset in details
             """ 
             DatasetDict({
@@ -79,6 +85,9 @@ class DataProcessor:
                                remove_columns=self.get_remove_column_names(dataset))
         elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
             return dataset.map(self.process_single_label_classification_data, batched=True,
+                               remove_columns=self.get_remove_column_names(dataset))
+        elif self.task_name is HALLUCINATION_TASK_NAME:
+            return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
     def process_encoded_datasets(self):
@@ -159,3 +168,7 @@ class DataProcessor:
     def process_single_label_classification_data(self, examples):
         return self.tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128,
                               return_tensors="pt")
+
+    def process_hallucination_data(self, examples):
+        return self.tokenizer(examples["question"], examples["answer"], padding="max_length", truncation=True,
+                              max_length=128, return_tensors="pt")

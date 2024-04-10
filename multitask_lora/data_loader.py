@@ -1,7 +1,6 @@
 from datasets import load_dataset, DatasetDict
 from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME
-import numpy as np
 
 
 class DataLoader:
@@ -31,19 +30,13 @@ class DataLoader:
         print(f"DatasetDict(dataset) = {DatasetDict(dataset)}")
         return DatasetDict(dataset)
 
-    def load_hallucination_data(self):
+    @staticmethod
+    def load_hallucination_data():
         dataset = load_dataset("cemuluoglakci/hallucination_evaluation")
         test_validation_split = dataset["train"].train_test_split(test_size=0.2)
         test_validation_split = test_validation_split["test"].train_test_split(test_size=0.5)
         dataset["validation"] = test_validation_split["train"]
         dataset["test"] = test_validation_split["test"]
-
-        print(f"dataset = {dataset}")
-
-        print(f"====== {dataset['train'][0]}")
-        print(f"====== {dataset['validation'][0]}")
-        print(f"====== {dataset['test'][0]}")
-
 
         # def map_labels(example):
         #     if example['answer_label'] == 'valid':
@@ -56,14 +49,7 @@ class DataLoader:
         #
         # dataset = dataset.map(map_labels)
 
-        # test_validation_split = dataset["test"].train_test_split(test_size=0.5)
-        # dataset["validation"] = test_validation_split["train"]
-        # dataset["test"] = test_validation_split["test"]
-
-        # print(dataset["train"][0])
         return dataset
-
-        # return self.filter_non_records(dataset, "text")
 
     def load_gibberish_data(self):
         # dataset = load_dataset("imdb")

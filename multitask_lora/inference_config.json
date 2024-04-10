@@ -42,5 +42,10 @@
     "unsafe_prompt": {
         "0": "safe",
         "1": "unsafe"
+    },
+    "hallucination": {
+        "0": "valid",
+        "1": "hallucination",
+        "2": "irrelevant"
     }
 }
