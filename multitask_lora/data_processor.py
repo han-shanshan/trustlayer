@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoConfig
 import numpy as np
 from datasets import concatenate_datasets, load_dataset, DatasetDict
 from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
 from multitask_lora.data_loader import DataLoader
 
 
@@ -35,6 +35,8 @@ class DataProcessor:
     def get_remove_column_names(self, dataset):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
             return "text"
+        if self.task_name is TOXICITY_TASK_NAME:
+            return ["text", "lang"]
         train_phase_name, _, _ = self.get_phase_names()
         if self.task_name is HALLUCINATION_TASK_NAME:
             hallucination_columns = dataset[train_phase_name].column_names
@@ -53,6 +55,8 @@ class DataProcessor:
             return ['safe', 'unsafe']
         elif self.task_name is HALLUCINATION_TASK_NAME:
             return ['valid', 'hallucination', 'irrelevant']
+        elif self.task_name is TOXICITY_TASK_NAME:
+            return ['non-toxic', 'toxic']
         elif self.task_name is TOPIC_TASK_NAME: # todo: check the dataset in details
             """ 
             DatasetDict({
@@ -83,7 +87,7 @@ class DataProcessor:
         elif self.task_name is TOPIC_TASK_NAME:
             return dataset.map(self.process_topic_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
-        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
+        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME]:
             return dataset.map(self.process_single_label_classification_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
         elif self.task_name is HALLUCINATION_TASK_NAME:

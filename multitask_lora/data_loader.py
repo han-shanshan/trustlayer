@@ -1,6 +1,6 @@
 from datasets import load_dataset, DatasetDict
 from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
 
 
 class DataLoader:
@@ -18,6 +18,8 @@ class DataLoader:
             return self.load_unsafe_prompt_data()
         elif task_name == HALLUCINATION_TASK_NAME:
             return self.load_hallucination_data()
+        elif task_name == TOXICITY_TASK_NAME:
+            return self.load_toxicity_data()
         else:
             return None
 
@@ -29,6 +31,13 @@ class DataLoader:
         dataset["test"] = test_validation_split["test"]
         print(f"DatasetDict(dataset) = {DatasetDict(dataset)}")
         return DatasetDict(dataset)
+
+    def load_toxicity_data(self):
+        dataset = load_dataset("FredZhang7/toxi-text-3M")
+        for split in dataset.keys():
+            dataset[split] = dataset[split].rename_column("is_toxic", "label")
+        # TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
+        return self.filter_non_records(dataset, "text")
 
     @staticmethod
     def load_hallucination_data():
@@ -74,7 +83,7 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    data = DataLoader().load_data(HALLUCINATION_TASK_NAME)
+    data = DataLoader().load_data(TOXICITY_TASK_NAME)
     # print(data.column_names)
     # print()
     # print(f"     {data['train'][0]}")

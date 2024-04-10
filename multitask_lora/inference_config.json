@@ -47,5 +47,9 @@
         "0": "valid",
         "1": "hallucination",
         "2": "irrelevant"
+    },
+    "toxicity": {
+        "0": "non-toxic",
+        "1": "toxic"
     }
 }
