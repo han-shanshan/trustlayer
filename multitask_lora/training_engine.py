@@ -4,18 +4,38 @@ from transformers import TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
+from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
 def multi_label_metrics(predictions, labels, threshold=0.5):
-    # first, apply sigmoid on predictions which are of shape (batch_size, num_labels)
+    # apply sigmoid on predictions which are of shape (batch_size, num_labels)
     sigmoid = torch.nn.Sigmoid()
     probs = sigmoid(torch.Tensor(predictions))
     # next, use threshold to turn them into integer predictions
     y_pred = np.zeros(probs.shape)
     y_pred[np.where(probs >= threshold)] = 1
-    # finally, compute metrics
+    # compute metrics
+    y_true = labels
+    f1_micro_average = f1_score(y_true=y_true, y_pred=y_pred, average='micro')
+    roc_auc = roc_auc_score(y_true, y_pred, average='micro')
+    accuracy = accuracy_score(y_true, y_pred)
+    # return as dictionary
+    metrics = {'f1': f1_micro_average,
+               'roc_auc': roc_auc,
+               'accuracy': accuracy}
+    return metrics
+
+
+def single_label_metrics(predictions, labels, threshold=0.5):
+    # apply sigmoid on predictions which are of shape (batch_size, num_labels)
+    softmax = torch.nn.Softmax()
+    probs = softmax(torch.Tensor(predictions))
+    # use threshold to turn them into integer predictions
+    y_pred = np.zeros(probs.shape)
+    y_pred[np.where(probs >= threshold)] = 1
+    # compute metrics
     y_true = labels
     f1_micro_average = f1_score(y_true=y_true, y_pred=y_pred, average='micro')
     roc_auc = roc_auc_score(y_true, y_pred, average='micro')
@@ -32,31 +52,49 @@ class TrainingEngine:
         self.base_model_name = base_model_name
         self.task_name = task_name
         self.training_args = training_args
+        self.label_metrics = None
 
     def set_task_type(self, task_name):
         self.task_name = task_name
 
-    @staticmethod
-    def compute_metrics(p):
+    def get_label_metrics(self):
+        if self.task_name is GIBBERISH_TASK_NAME:
+            self.label_metrics = single_label_metrics
+        else:
+            self.label_metrics = multi_label_metrics
+
+    def compute_metrics(self, p):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-        result = multi_label_metrics(
+        result = self.label_metrics(
             predictions=preds,
             labels=p.label_ids)
         return result
 
+    # def get_problem_type(self):
+
+    def get_pretrained_model(self, label_dicts, id2label, label2id):
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
+            return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
+                                                                      num_labels=len(label_dicts),
+                                                                      id2label=id2label,
+                                                                      label2id=label2id,
+                                                                      load_in_8bit=False
+                                                                      )
+        else:
+            return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
+                                                                      problem_type="multi_label_classification",
+                                                                      num_labels=len(label_dicts),
+                                                                      id2label=id2label,
+                                                                      label2id=label2id,
+                                                                      load_in_8bit=False
+                                                                      )
+
     def train(self):
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
         data_processor = DataProcessor(tokenizer=tokenizer, task_name=self.task_name)
-        encoded_dataset, id2label, label2id, label_dicts = data_processor.get_encoded_datasets()
+        encoded_dataset, id2label, label2id, label_dicts = data_processor.process_encoded_datasets()
 
-
-        model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
-                                                                   problem_type="multi_label_classification",
-                                                                   num_labels=len(label_dicts),
-                                                                   id2label=id2label,
-                                                                   label2id=label2id,
-                                                                   load_in_8bit=False
-                                                                   )
+        model = self.get_pretrained_model(label_dicts, id2label, label2id)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config

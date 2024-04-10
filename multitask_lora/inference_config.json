@@ -33,5 +33,14 @@
         "16": "family",
         "17": "arts_&_culture",
         "18": "learning_&_educational"
+    },
+    "gibberish": {
+        "0": "clean",
+        "1": "noise",
+        "2": "word salad"
+    },
+    "unsafe_prompt": {
+        "0": "safe",
+        "1": "unsafe"
     }
 }

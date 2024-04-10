@@ -1,1 +1,6 @@
 transformers
+datasets
+peft
+scikit-learn
+torch
+torchvision

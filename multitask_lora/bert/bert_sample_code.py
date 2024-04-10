@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     print("=======start loading metric=========")
 
-    metric = evaluate.load("accuracy")
+    # metric = evaluate.load("accuracy")
 
     # Define LoRA Config
     lora_config = LoraConfig(
