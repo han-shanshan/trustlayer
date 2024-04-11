@@ -93,7 +93,7 @@ class TrainingEngine:
 
     def train(self):
         data_processor = DataProcessor(task_name=self.task_name)
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info()
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info(desired_total_data_n=10000)
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
