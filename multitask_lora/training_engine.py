@@ -44,7 +44,8 @@ class TrainingEngine:
         self.task_name = task_name
 
     def set_label_metrics(self):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
+                              TOXICITY_TASK_NAME]:
             self.label_metrics = self.compute_metrics_for_single_label_tasks
         else:
             self.label_metrics = self.compute_metrics_for_multilabel_tasks
@@ -64,7 +65,8 @@ class TrainingEngine:
         return accuracy.compute(predictions=predictions, references=labels)
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
+                              TOXICITY_TASK_NAME]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,
@@ -80,19 +82,22 @@ class TrainingEngine:
                                                                       load_in_8bit=False
                                                                       )
 
-    def get_tokenizer(self):
+    def get_tokenizer(self, model):
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
         if self.base_model_name in [MODEL_NAME_TINYLAMMA]:
             # tokenizer.pad_token = tokenizer.eos_token
-            tokenizer.padding_side = 'right'  # to prevent warnings
+            # tokenizer.padding_side = 'right'  # to prevent warnings
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = model.config.eos_token_id
         return tokenizer
 
     def train(self):
-        tokenizer = self.get_tokenizer()
-        data_processor = DataProcessor(tokenizer=tokenizer, task_name=self.task_name)
-        encoded_dataset, id2label, label2id, label_dicts = data_processor.process_encoded_datasets()
+        data_processor = DataProcessor(task_name=self.task_name)
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info()
+        model = self.get_pretrained_model(label_names, id2labels, label2ids)
+        tokenizer = self.get_tokenizer(model)
+        encoded_dataset, id2label, label2id, label_dicts = data_processor.process_encoded_datasets(tokenizer=tokenizer)
 
-        model = self.get_pretrained_model(label_dicts, id2label, label2id)
         config_manager = ConfigManager(self.task_name, self.base_model_name)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")

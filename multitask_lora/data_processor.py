@@ -7,11 +7,8 @@ from multitask_lora.data_loader import DataLoader
 
 
 class DataProcessor:
-    def __init__(self, tokenizer=None, task_name=None) -> None:
-        if tokenizer is None:
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-        else:
-            self.tokenizer = tokenizer
+    def __init__(self, task_name=None) -> None:
+        self.tokenizer = None
         self.labels = None
         self.task_name = task_name
 
@@ -94,11 +91,10 @@ class DataProcessor:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
-    def process_encoded_datasets(self):
+    def get_dataset_info(self):
         dataset = DataLoader().load_data(task_name=self.task_name)
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")
-
         idx = 0
         id2labels = {}
         label2ids = {}
@@ -106,16 +102,18 @@ class DataProcessor:
             id2labels[idx] = label
             label2ids[label] = idx
             idx += 1
-
         self.set_labels(labels=label_names)
-        encoded_dataset = self.encoding(dataset)
+        return dataset, id2labels, label2ids, label_names
 
-        if self.task_name == TOPIC_TASK_NAME: # todo: move to data loader
+    def process_encoded_datasets(self, dataset, tokenizer):
+        self.tokenizer = tokenizer
+        encoded_dataset = self.encoding(dataset)
+        if self.task_name == TOPIC_TASK_NAME:  # todo: move to data loader
             encoded_dataset = self.concatenate_dataset_of_same_phase(encoded_dataset)
 
         final_dataset = DatasetDict(encoded_dataset)
         final_dataset.set_format("torch")
-        return final_dataset, id2labels, label2ids, label_names
+        return final_dataset
 
     @staticmethod
     def concatenate_dataset_of_same_phase(encoded_dataset):
