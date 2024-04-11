@@ -1,5 +1,5 @@
 from multitask_lora.constants import SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    MODEL_NAME_TINYLAMMA
+    MODEL_NAME_TINYLAMMA, TOXICITY_TASK_NAME, HALLUCINATION_TASK_NAME
 from multitask_lora.inference_engine import InferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 import os
@@ -8,9 +8,9 @@ import torch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if device.type == 'cuda':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
-TASK_NAME = UNSAFE_PROMPT_TASK_NAME
+TASK_NAME = GIBBERISH_TASK_NAME
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

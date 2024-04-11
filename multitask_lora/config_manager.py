@@ -1,7 +1,6 @@
 from peft import LoraConfig, get_peft_model, TaskType
 from transformers import TrainingArguments
-
-from multitask_lora.constants import MODEL_NAME_TINYLAMMA
+from multitask_lora.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NAME
 
 
 class ConfigManager:
@@ -11,9 +10,12 @@ class ConfigManager:
 
     def get_training_config(self, output_dir, batch_size=8):
         if self.model is MODEL_NAME_TINYLAMMA:
+            num_train_epochs = 20
+            # if self.task_name in [UNSAFE_PROMPT_TASK_NAME]:
+            #     num_train_epochs = 50
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
-                num_train_epochs=3,  # number of training epochs
+                num_train_epochs=num_train_epochs,  # number of training epochs
                 per_device_train_batch_size=3,  # batch size per device during training
                 gradient_accumulation_steps=2,  # number of steps before performing a backward/update pass
                 gradient_checkpointing=True,  # use gradient checkpointing to save memory

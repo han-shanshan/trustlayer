@@ -7,21 +7,44 @@ class DataLoader:
     def __init__(self):
         pass
 
-    def load_data(self, task_name):
+    def load_data(self, task_name, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
+        # None: return full dataset by default
         if task_name == TOPIC_TASK_NAME:
-            return load_dataset("cardiffnlp/tweet_topic_multi")
+            dataset = load_dataset("cardiffnlp/tweet_topic_multi")
         elif task_name == SEMANTIC_TASK_NAME:
-            return load_dataset("sem_eval_2018_task_1", "subtask5.english")
+            dataset = load_dataset("sem_eval_2018_task_1", "subtask5.english")
         elif task_name == GIBBERISH_TASK_NAME:
-            return self.load_gibberish_data()
+            dataset = self.load_gibberish_data()
         elif task_name == UNSAFE_PROMPT_TASK_NAME:
-            return self.load_unsafe_prompt_data()
+            dataset = self.load_unsafe_prompt_data()
         elif task_name == HALLUCINATION_TASK_NAME:
-            return self.load_hallucination_data()
+            dataset = self.load_hallucination_data()
         elif task_name == TOXICITY_TASK_NAME:
-            return self.load_toxicity_data()
+            dataset = self.load_toxicity_data()
         else:
-            return None
+            dataset = None
+        print(f"-----task name = {task_name}------\n original dataset: {dataset}")
+        dataset = dataset.shuffle(seed=0)
+
+        if desired_total_data_n is None:  # return full dataset by default
+            return dataset
+        small_dataset = self.get_a_small_dataset(dataset, desired_total_data_n, test_per, training_per, validation_per)
+        print(f"new dataset: {DatasetDict(small_dataset)}")
+        return small_dataset
+
+    @staticmethod
+    def get_a_small_dataset(dataset, desired_total_data_num, test_per, training_per, validation_per):
+        for k in dataset.keys():
+            if "train" in k:
+                if int(desired_total_data_num * training_per) < len(dataset[k]):
+                    dataset[k] = dataset[k].select(range(int(desired_total_data_num * training_per)))
+            if "validation" in k:
+                if int(desired_total_data_num * validation_per) < len(dataset[k]):
+                    dataset[k] = dataset[k].select(range(int(desired_total_data_num * validation_per)))
+            if "test" in k:
+                if int(desired_total_data_num * test_per) < len(dataset[k]):
+                    dataset[k] = dataset[k].select(range(int(desired_total_data_num * test_per)))
+        return DatasetDict(dataset)
 
     @staticmethod
     def load_unsafe_prompt_data():
@@ -29,7 +52,6 @@ class DataLoader:
         test_validation_split = dataset["test"].train_test_split(test_size=0.5)
         dataset["validation"] = test_validation_split["train"]
         dataset["test"] = test_validation_split["test"]
-        print(f"DatasetDict(dataset) = {DatasetDict(dataset)}")
         return DatasetDict(dataset)
 
     def load_toxicity_data(self):
@@ -44,23 +66,10 @@ class DataLoader:
         dataset = load_dataset("cemuluoglakci/hallucination_evaluation")
         for split in dataset.keys():
             dataset[split] = dataset[split].rename_column("answer_label_id", "label")
-
         test_validation_split = dataset["train"].train_test_split(test_size=0.2)
         test_validation_split = test_validation_split["test"].train_test_split(test_size=0.5)
         dataset["validation"] = test_validation_split["train"]
         dataset["test"] = test_validation_split["test"]
-
-        # def map_labels(example):
-        #     if example['answer_label'] == 'valid':
-        #         example['answer_label'] = 0
-        #     elif example['answer_label'] == 'hallucination':
-        #         example['answer_label'] = 1
-        #     elif example['answer_label'] == 'irrelevant':
-        #         example['answer_label'] = 2
-        #     return example
-        #
-        # dataset = dataset.map(map_labels)
-
         return dataset
 
     def load_gibberish_data(self):
@@ -83,7 +92,11 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    data = DataLoader().load_data(TOXICITY_TASK_NAME)
-    # print(data.column_names)
-    # print()
-    # print(f"     {data['train'][0]}")
+    desired_total_data_n = 10000
+    DataLoader().load_data(TOXICITY_TASK_NAME, desired_total_data_n=desired_total_data_n)
+    DataLoader().load_data(SEMANTIC_TASK_NAME, desired_total_data_n=desired_total_data_n)
+    DataLoader().load_data(GIBBERISH_TASK_NAME, desired_total_data_n=desired_total_data_n)
+    DataLoader().load_data(UNSAFE_PROMPT_TASK_NAME, desired_total_data_n=desired_total_data_n)
+    DataLoader().load_data(HALLUCINATION_TASK_NAME, desired_total_data_n=desired_total_data_n)
+    DataLoader().load_data(TOPIC_TASK_NAME, desired_total_data_n=desired_total_data_n)
+
