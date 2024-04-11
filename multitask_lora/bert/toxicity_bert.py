@@ -1,4 +1,4 @@
-from multitask_lora.constants import TOXICITY_TASK_NAME
+from multitask_lora.constants import TOXICITY_TASK_NAME, MODEL_NAME_BERT_BASE
 from multitask_lora.inference_engine import InferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 import os
@@ -6,7 +6,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
 TASK_NAME = TOXICITY_TASK_NAME
-MODEL_NAME = "google-bert/bert-base-uncased"  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
+MODEL_NAME = MODEL_NAME_BERT_BASE  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 

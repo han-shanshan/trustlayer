@@ -1,4 +1,4 @@
-from multitask_lora.constants import TOPIC_TASK_NAME
+from multitask_lora.constants import TOPIC_TASK_NAME, MODEL_NAME_BERT_BASE
 from multitask_lora.inference_engine import InferenceEngine
 import os
 
@@ -6,7 +6,7 @@ from multitask_lora.training_engine import TrainingEngine
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
-MODEL_NAME = "google-bert/bert-base-uncased"  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
+MODEL_NAME = MODEL_NAME_BERT_BASE  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
 
 
 if __name__ == '__main__':

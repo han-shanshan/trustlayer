@@ -1,11 +1,12 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from transformers import TrainingArguments, Trainer
-from peft import LoraConfig, get_peft_model, TaskType
+from transformers import Trainer
+from peft import get_peft_model
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
+from multitask_lora.config_manager import ConfigManager
 from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME
+    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA
 from multitask_lora.data_processor import DataProcessor
 import evaluate
 
@@ -33,10 +34,9 @@ def multi_label_metrics(predictions, labels, threshold=0.5):
 
 
 class TrainingEngine:
-    def __init__(self, base_model_name, task_name, training_args=None):
+    def __init__(self, base_model_name, task_name):
         self.base_model_name = base_model_name
         self.task_name = task_name
-        self.training_args = training_args
         self.label_metrics = None
         self.set_label_metrics()
 
@@ -80,47 +80,32 @@ class TrainingEngine:
                                                                       load_in_8bit=False
                                                                       )
 
-    def train(self):
+    def get_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
+        if self.base_model_name in [MODEL_NAME_TINYLAMMA]:
+            # tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.padding_side = 'right'  # to prevent warnings
+        return tokenizer
+
+    def train(self):
+        tokenizer = self.get_tokenizer()
         data_processor = DataProcessor(tokenizer=tokenizer, task_name=self.task_name)
         encoded_dataset, id2label, label2id, label_dicts = data_processor.process_encoded_datasets()
 
         model = self.get_pretrained_model(label_dicts, id2label, label2id)
+        config_manager = ConfigManager(self.task_name, self.base_model_name)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config
-        lora_config = LoraConfig(
-            r=16,
-            lora_alpha=32,
-            target_modules=["query", "value"],
-            lora_dropout=0.05,
-            bias="none",
-            task_type=TaskType.SEQ_CLS
-        )
-        model = get_peft_model(model, lora_config)
+        model = get_peft_model(model, config_manager.get_lora_config())
         print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
-        batch_size = 8
         output_dir = self.base_model_name.split("/")[1] + "-" + self.task_name
-        if self.training_args is None:
-            self.training_args = TrainingArguments(
-                output_dir=output_dir,
-                evaluation_strategy="epoch",
-                save_strategy="epoch",
-                learning_rate=2e-5,
-                per_device_train_batch_size=batch_size,
-                per_device_eval_batch_size=batch_size,
-                num_train_epochs=50,
-                weight_decay=0.01,
-                load_best_model_at_end=True,
-                # metric_for_best_model=metric_name,
-                # push_to_hub=True,
-            )
 
         bert_peft_trainer = Trainer(
             model=model,
-            args=self.training_args,
+            args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,
