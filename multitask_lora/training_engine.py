@@ -96,7 +96,7 @@ class TrainingEngine:
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info()
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)
-        encoded_dataset, id2label, label2id, label_dicts = data_processor.process_encoded_datasets(tokenizer=tokenizer)
+        encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 
         config_manager = ConfigManager(self.task_name, self.base_model_name)
         print("=======start loading metric=========")
