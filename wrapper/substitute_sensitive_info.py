@@ -5,7 +5,7 @@ from wrapper.wrapper_base import BaseWrapper
 class SubstituteWrapper(BaseWrapper):
     def __init__(self, config):
         super().__init__(config)
-        if "substitution_dictionary=None" in config:
+        if "substitution_dictionary" in config:
             self.substitution_dictionary = config['substitution_dictionary']
         else:
             self.substitution_dictionary = read_substitutions_from_file("./storage/substitutions.txt")
