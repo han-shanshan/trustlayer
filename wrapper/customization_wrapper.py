@@ -1,4 +1,4 @@
-from customization.substitute_sensitive_info import SubstituteWrapper
+from wrapper.substitute_sensitive_info import SubstituteWrapper
 
 
 class CustomizationWrapper:

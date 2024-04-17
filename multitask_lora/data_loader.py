@@ -55,7 +55,7 @@ class DataLoader:
         return DatasetDict(dataset)
 
     def load_toxicity_data(self):
-        dataset = load_dataset("FredZhang7/toxi-text-3M")
+        dataset = load_dataset("FredZhang7/toxi-text-3M")  # todo: filter non-english data
         for split in dataset.keys():
             dataset[split] = dataset[split].rename_column("is_toxic", "label")
         # TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from customization.url_detection_wrapper import extract_urls, URLDetectionWrapper
+from wrapper.url_detection_wrapper import extract_urls, URLDetectionWrapper
 
 
 class TestURLDetectionWrapper(unittest.TestCase):

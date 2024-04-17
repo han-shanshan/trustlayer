@@ -11,8 +11,6 @@ class ConfigManager:
     def get_training_config(self, output_dir, batch_size=8):
         if self.model is MODEL_NAME_TINYLAMMA:
             num_train_epochs = 20
-            # if self.task_name in [UNSAFE_PROMPT_TASK_NAME]:
-            #     num_train_epochs = 50
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=num_train_epochs,  # number of training epochs
@@ -37,7 +35,7 @@ class ConfigManager:
                 learning_rate=2e-5,
                 per_device_train_batch_size=batch_size,
                 per_device_eval_batch_size=batch_size,
-                num_train_epochs=50,
+                num_train_epochs=20,
                 weight_decay=0.01,
                 load_best_model_at_end=True,
                 # metric_for_best_model=metric_name,

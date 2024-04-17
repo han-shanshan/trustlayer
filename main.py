@@ -2,7 +2,7 @@ import sys
 import yaml
 from llm_inference.inference import Inference
 from trust_libs.trust_detector import TrustDetector
-from customization.customization_wrapper import CustomizationWrapper
+from wrapper.customization_wrapper import CustomizationWrapper
 
 if __name__ == '__main__':
     with open("config.yaml", "r") as file:

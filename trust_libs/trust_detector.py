@@ -1,5 +1,7 @@
+from trust_libs.securellm.gibberish.gibberish_detector import GibbrishDetector
 from trust_libs.securellm.toxicity.toxicity_detector_toxic_bert import ToxicityDetectorToxicBert
 from typing import Union, Optional
+from trust_libs.securellm.unsafe_prompt.unsafe_prompt_detector import UnsafePromptDetector
 
 
 class TrustDetector:
@@ -8,6 +10,10 @@ class TrustDetector:
         self.detectors = []
         if 'enable_toxicity' in config and config['enable_toxicity']:
             self.detectors.append(("toxicity", ToxicityDetectorToxicBert(config)))
+        if 'enable_gibberish' in config and config['enable_gibberish']:
+            self.detectors.append(("gibberish", GibbrishDetector(config)))
+        if 'unsafe_prompt' in config and config['unsafe_prompt']:
+            self.detectors.append(("unsafe_prompt", UnsafePromptDetector(config)))
 
     def get_detection_results(self):
         return self.detect_results

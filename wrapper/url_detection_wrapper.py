@@ -1,4 +1,4 @@
-from customization.wrapper_base import BaseWrapper
+from wrapper.wrapper_base import BaseWrapper
 import re
 import requests
 from requests.exceptions import HTTPError, Timeout, RequestException

@@ -1,5 +1,5 @@
 import unittest
-from customization.suggested_reading_time_wrapper import SuggestedReadingTimeWrapper
+from wrapper.suggested_reading_time_wrapper import SuggestedReadingTimeWrapper
 
 
 class TestSuggestedReadingTimeWrapper(unittest.TestCase):

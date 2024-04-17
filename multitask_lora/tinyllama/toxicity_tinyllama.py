@@ -5,10 +5,7 @@ from multitask_lora.training_engine import TrainingEngine
 import os
 import torch
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-if device.type == 'cuda':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 TASK_NAME = TOXICITY_TASK_NAME
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
