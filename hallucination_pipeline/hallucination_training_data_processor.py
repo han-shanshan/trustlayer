@@ -29,9 +29,17 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         print("Distinct values in Column explain:", labels)
         return labels
 
-    def encoding(self, dataset):
-        return dataset.map(self.process_customized_hallucination_data, batched=True,
+    # def encoding(self, dataset):
+    #     return dataset.map(self.process_customized_hallucination_data, batched=True,
+    #                        remove_columns=self.get_remove_column_names(dataset))
+
+    def process_encoded_datasets(self, dataset, tokenizer):
+        self.tokenizer = tokenizer
+        encoded_dataset = dataset.map(self.process_customized_hallucination_data, batched=True,
                            remove_columns=self.get_remove_column_names(dataset))
+        final_dataset = DatasetDict(encoded_dataset)
+        final_dataset.set_format("torch")
+        return final_dataset
 
     def get_dataset_info(self, desired_total_data_n=None, file_path=None, training_per=0.8, validation_per=0.1,
                          test_per=0.1):

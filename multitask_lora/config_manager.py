@@ -4,7 +4,7 @@ from multitask_lora.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NA
 
 
 class ConfigManager:
-    def __init__(self, task_name, model):
+    def __init__(self, task_name=None, model=None):
         self.task_name = task_name
         self.model = model
 
