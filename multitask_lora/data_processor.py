@@ -1,6 +1,5 @@
-from transformers import AutoTokenizer, AutoConfig
 import numpy as np
-from datasets import concatenate_datasets, load_dataset, DatasetDict
+from datasets import concatenate_datasets, DatasetDict
 from multitask_lora.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
 from multitask_lora.data_loader import DataLoader
@@ -91,7 +90,7 @@ class DataProcessor:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
-    def get_dataset_info(self, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
+    def get_dataset_info(self, desired_total_data_n=None, file_path=None, training_per=0.8, validation_per=0.1, test_per=0.1):
         dataset = DataLoader().load_data(task_name=self.task_name, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
         label_names = self.prepare_label_dict_for_a_task(dataset)
