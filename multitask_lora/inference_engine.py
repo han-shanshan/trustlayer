@@ -1,5 +1,7 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
+    HALLUCINATION_TASK_NAME
 import torch
 import json
 import re
@@ -13,15 +15,24 @@ https://github.com/huggingface/peft/discussions/661
 
 
 class InferenceEngine:
-    def __init__(self, default_task):
+    def __init__(self, default_task, config=None, problem_type=None):
         self.task_name = default_task
-        general_config_file_path = '../inference_config.json'
-
-        with open(general_config_file_path, 'r') as file:
-            self.config = json.load(file)
+        if config is not None:
+            self.config = config
+        else:
+            general_config_file_path = './inference_config.json'
+            with open(general_config_file_path, 'r') as file:
+                self.config = json.load(file)
         print(f"config = {self.config}")
         self.base_model_name = self.config['base_model_name_or_path']
         self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
+        if problem_type is not None and problem_type in ["single_label_classification", "multi_label_classification"]:
+            self.problem_type = problem_type
+        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME,
+                              HALLUCINATION_TASK_NAME]:
+            self.problem_type = "single_label_classification"
+        else:
+            self.problem_type = "multi_label_classification"
 
     def set_task(self, task_type):
         self.task_name = task_type
@@ -49,7 +60,7 @@ class InferenceEngine:
         path = self.get_checkpoint_directory(checkpoint_id)
         print(f"model path = {path}")
         base_model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
-                                                                        problem_type="multi_label_classification",
+                                                                        problem_type=self.problem_type,
                                                                         num_labels=len(self.config[self.task_name]),
                                                                         id2label=self.config[self.task_name]
                                                                         )
@@ -59,11 +70,18 @@ class InferenceEngine:
         outputs = base_model(**encoding)
         logits = outputs.logits
 
-        # apply sigmoid + threshold
-        sigmoid = torch.nn.Sigmoid()
-        probs = sigmoid(logits.squeeze().cpu())
-        predictions = np.zeros(probs.shape)
-        predictions[np.where(probs >= 0.5)] = 1
-        # turn predicted id's into actual label names
-        predicted_labels = [self.config[self.task_name][str(idx)] for idx, label in enumerate(predictions) if label == 1.0]
-        return predicted_labels
+        if self.problem_type == "multi_label_classification":
+            # apply sigmoid + threshold
+            sigmoid = torch.nn.Sigmoid()
+            probs = sigmoid(logits.squeeze().cpu())
+            predictions = np.zeros(probs.shape)
+            predictions[np.where(probs >= 0.5)] = 1
+            # turn predicted id's into actual label names
+            predicted_label = [self.config[self.task_name][str(idx)] for idx, label in enumerate(predictions) if label == 1.0]
+        else:
+            predicted_label_idx = torch.argmax(logits, dim=-1).item()
+            predicted_label = self.config[self.task_name][str(predicted_label_idx)]
+
+        return predicted_label
+
+

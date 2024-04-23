@@ -1,0 +1,56 @@
+{
+    "base_model_name_or_path": "google-bert/bert-base-uncased",
+
+    "semantic": {
+        "0": "anger",
+        "1": "anticipation",
+        "2": "disgust",
+        "3": "fear",
+        "4": "joy",
+        "5": "love",
+        "6": "optimism",
+        "7": "pessimism",
+        "8": "sadness",
+        "9": "surprise",
+        "10": "trust"
+    },
+    "topic": {
+        "0": "diaries_&_daily_life",
+        "1": "sports",
+        "2": "other_hobbies",
+        "3": "travel_&_adventure",
+        "4": "fashion_&_style",
+        "5": "food_&_dining",
+        "6": "fitness_&_health",
+        "7": "film_tv_&_video",
+        "8": "science_&_technology",
+        "9": "gaming",
+        "10": "music",
+        "11": "youth_&_student_life",
+        "12": "celebrity_&_pop_culture",
+        "13": "business_&_entrepreneurs",
+        "14": "news_&_social_concern",
+        "15": "relationships",
+        "16": "family",
+        "17": "arts_&_culture",
+        "18": "learning_&_educational"
+    },
+    "gibberish": {
+        "0": "clean",
+        "1": "noise",
+        "2": "word salad"
+    },
+    "unsafe_prompt": {
+        "0": "safe",
+        "1": "unsafe"
+    },
+    "hallucination": {
+        "0": "valid",
+        "1": "hallucination",
+        "2": "irrelevant"
+    },
+    "toxicity": {
+        "0": "non-toxic",
+        "1": "toxic"
+    }
+}

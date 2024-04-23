@@ -42,6 +42,7 @@ class HallucinationTrainingEngine(TrainingEngine):
     def train(self):
         data_processor = HallucinationTrainingDataProcessor()
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info(file_path="data/hallucination_cases.xlsx")
+        print(f"id2labels={id2labels}")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
