@@ -8,6 +8,7 @@ from strengthenllm.translator import Translator
 class HallucinationTrainingDataProcessor(DataProcessor):
     def __init__(self):
         super().__init__(task_name=CUSTOMIZED_HALLUCINATION_TASK_NAME)
+        self.multilingual_label_mapping = {}
 
     def set_labels(self, labels):
         self.labels = labels
@@ -29,7 +30,9 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         labels = df['explain'].unique().tolist()
         labels[:] = [str(x).strip() for x in labels if str(x).strip()]  # remove meaningless values
         for i in range(len(labels)):
-            _, labels[i] = Translator().get_instance().language_unification(labels[i])
+            original_text = labels[i]
+            _, labels[i] = Translator().get_instance().language_unification(labels[i])  # labels[i]: english label
+            self.multilingual_label_mapping[original_text] = labels[i]
         print("english labels:", labels)
         return labels
 
@@ -83,10 +86,10 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         labels_batch = {}
         for label in self.labels:
             labels_batch[label] = []
-        for label_names_of_one_record in examples['explain']:
+        for original_language_label in examples['explain']:
             for label in self.labels:
-                if label in label_names_of_one_record:
-                    labels_batch[label].append(True)
+                if self.multilingual_label_mapping[original_language_label] == label:
+                    labels_batch[label].append(True)  # later may be extended to multi label classification
                 else:
                     labels_batch[label].append(False)
         labels_matrix = np.zeros((len(text), len(self.labels)))
