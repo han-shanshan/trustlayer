@@ -88,7 +88,7 @@ class HallucinationTrainingDataProcessor(DataProcessor):
             labels_batch[label] = []
         for original_language_label in examples['explain']:
             for label in self.labels:
-                if self.multilingual_label_mapping[original_language_label] == label:
+                if original_language_label is not None and self.multilingual_label_mapping[original_language_label] == label:
                     labels_batch[label].append(True)  # later may be extended to multi label classification
                 else:
                     labels_batch[label].append(False)
