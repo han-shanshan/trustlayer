@@ -7,7 +7,7 @@ class GroundingTool:
         self.data_operator = HallucinationDataOperator()
 
     def grounding(self, text):
-        language_type, english_text = Translator().get_instance().language_unification(text)[0]
+        language_type, english_text = Translator().get_instance().language_unification(text)
         query_key = self.data_operator.title_generation_pipe(english_text)
         brand_name = self.data_operator.extract_brand_name(english_text)
         general_knowledge = ""

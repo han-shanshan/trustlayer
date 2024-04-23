@@ -2,6 +2,7 @@ import numpy as np
 from datasets import DatasetDict, Dataset
 from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
+from strengthenllm.translator import Translator
 
 
 class HallucinationTrainingDataProcessor(DataProcessor):
@@ -25,13 +26,12 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         return remove_columns
 
     def prepare_label_dict_for_a_task(self, df):
-        labels = df['explain'].unique()
-        print("Distinct values in Column explain:", labels)
+        labels = df['explain'].unique().tolist()
+        labels[:] = [str(x).strip() for x in labels if str(x).strip()]  # remove meaningless values
+        for i in range(len(labels)):
+            _, labels[i] = Translator().get_instance().language_unification(labels[i])
+        print("english labels:", labels)
         return labels
-
-    # def encoding(self, dataset):
-    #     return dataset.map(self.process_customized_hallucination_data, batched=True,
-    #                        remove_columns=self.get_remove_column_names(dataset))
 
     def process_encoded_datasets(self, dataset, tokenizer):
         self.tokenizer = tokenizer
@@ -48,6 +48,7 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         # todo: translate to English
         connecting_phrase = " Please make inference based on the following knowledge: "
         df['question_and_knowledge'] = df['question'] + connecting_phrase + df['knowledge']
+        df = df[['question_and_knowledge', 'response', 'explain']]
         print(df)
         label_names = self.prepare_label_dict_for_a_task(df)
         print(f"label names = {label_names}")
@@ -60,21 +61,23 @@ class HallucinationTrainingDataProcessor(DataProcessor):
             idx += 1
         self.set_labels(labels=label_names)
 
+        print(f"df = {df}")
+
         dataset = Dataset.from_pandas(df)
-        dataset_dict = DatasetDict({
+        dataset_dict = {
             'train': dataset.shuffle(seed=42).select(range(int(training_per * len(dataset)))),
             'test': dataset.shuffle(seed=42).select(
                 range(int(training_per * len(dataset)), int((training_per + test_per) * len(dataset)))),
             'validation': dataset.shuffle(seed=42).select(
                 range(int((training_per + test_per) * len(dataset)), len(dataset)))
-        })
-
+        }
         print(dataset_dict)
-        return dataset, id2labels, label2ids, label_names
+        dataset_dict = DatasetDict(dataset_dict)
+        return dataset_dict, id2labels, label2ids, label_names
 
     def process_customized_hallucination_data(self, examples):
         text = examples["question_and_knowledge"]
-        encoding = self.tokenizer(text, text_pair=examples["response"], padding="max_length", #truncation=True,
+        encoding = self.tokenizer(text, text_pair=examples["response"], padding="max_length", truncation=True,
                                   # max_length=512,
                                   return_tensors="pt")
         labels_batch = {}

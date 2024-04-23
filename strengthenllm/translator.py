@@ -33,8 +33,6 @@ class Translator:
         self.tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-50-many-to-one-mmt", use_fast=False)
         self.model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-one-mmt")
         self.language_mapping_dict, self.language_abbr_full_name_mapping = self.get_language_mapping_dict()
-        print(f"language_mapping_dict = {self.language_mapping_dict}")
-        print(f"self.language_abbr_full_name_mapping = {self.language_abbr_full_name_mapping}")
 
     @staticmethod
     def get_language_mapping_dict():  # multi language??
@@ -52,10 +50,9 @@ class Translator:
 
     def language_unification(self, text):
         original_language = self.language_detector(text, top_k=1, truncation=True)
-        # print(f"language = {language}")
         if original_language == "en":
             return original_language, text
         self.tokenizer.src_lang = self.language_mapping_dict[original_language[0]['label']]
         encoded_hi = self.tokenizer(text, return_tensors="pt")
         generated_tokens = self.model.generate(**encoded_hi)
-        return original_language, self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        return original_language, self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]

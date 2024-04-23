@@ -85,12 +85,11 @@ class HallucinationDataOperator():
         return self.vector_db_operator.search(text, index, k)
 
     def _extract_idx_for_a_qa(self, qa, brand, existing_knowledge=None):
-        # english_qa = Translator().get_instance().language_unification(qa)
         q_and_a = qa.strip().split("Answer:")
         if len(q_and_a) <= 1:
             return None
-        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace("Question:", "").strip())[0]
-        _, english_a = Translator().get_instance().language_unification(q_and_a[1].strip())[0]
+        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace("Question:", "").strip())
+        _, english_a = Translator().get_instance().language_unification(q_and_a[1].strip())
         # print(f"english_q = {english_q}, english_a = {english_a}")
         res = self.title_generation_pipe([english_q, english_a])
         # print(f"res = {res}")
@@ -128,7 +127,7 @@ class HallucinationDataOperator():
         return ["[" + idx + "] " + data for data, idx in knowledge_dict.items()]
 
     def extract_brand_name(self, data):
-        _, english_data = Translator().get_instance().language_unification(data)[0]
+        _, english_data = Translator().get_instance().language_unification(data)
         org_detection_res = self.brand_extractor(english_data)
         brand_name = "No-Brand"
         for d in org_detection_res:
