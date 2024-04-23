@@ -4,3 +4,4 @@ peft
 scikit-learn
 torch
 torchvision
+sentencepiece

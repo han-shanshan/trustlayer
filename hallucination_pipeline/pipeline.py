@@ -1,6 +1,6 @@
 import sys
 from hallucination_pipeline.post_processing import PostProcessor
-from strengthenllm.grounding.grounding_tool import GroundingTool
+from hallucination_pipeline.grounding_tool import GroundingTool
 from hallucination_pipeline.test_use_case import warranty_use_case
 from trust_libs.trust_detector import TrustDetector
 

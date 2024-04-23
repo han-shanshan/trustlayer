@@ -1,12 +1,7 @@
-"""
-Company name detection:
-https://huggingface.co/Vsevolod/company-names-similarity-sentence-transformer
-
-"""
 import pandas as pd
 from transformers import pipeline
 import re
-
+from strengthenllm.translator import Translator
 from storage.vector_db_operator import VectorDBOperator
 
 
@@ -25,19 +20,18 @@ def retrieve_company_name(text, starting_position):
     else:
         return ""
 
-
 # todo: remove duplicate keywords in idx, e.g., idx like aaabbb - aaabbb - aaabbb
-
 class HallucinationDataOperator():
+    """
+    brand_extractor pipes: "dslim/bert-base-NER-uncased" performs worse than dslim/bert-base-NER?? todo: to double check with more samples
+    keyword extraction pipes:
+        summarization pipe "Falconsai/text_summarization" will generate some uncontrolled stuff
+        "yanekyuk/bert-uncased-keyword-extractor" will only extract single keywords
+    todo: Will be replaced with Fox because the performance is not quite satisfying
+    """
+
     def __init__(self):
         self.brand_extractor = pipeline("token-classification", model="dslim/bert-base-NER")
-        # self.pipeline = pipeline("token-classification", model="dslim/bert-base-NER-uncased")
-        """
-            keyword extraction pipes: summarization_pipe will generate some uncontrolled stuff
-            todo: Will be replaced with Fox because the performance is not quite satisfying
-        """
-        # self.keyword_extractor = pipeline("token-classification", model="yanekyuk/bert-uncased-keyword-extractor")
-        # self.summarization_pipe = pipeline("summarization", model="Falconsai/text_summarization")
         self.title_generation_pipe = pipeline("text2text-generation", model="czearing/article-title-generator")
         self.vector_db_operator = VectorDBOperator()
         self.index_name = ""
@@ -77,43 +71,65 @@ class HallucinationDataOperator():
             raise ValueError(f"Column name {retrieved_col_name} does not exist. ")
         return [word for word in list(set(df[retrieved_col_name])) if type(word) is str]
 
-    def create_knowledge_db(self, idx_name):
-        raw_knowledge_data = self.read_data_from_file("hallucination_cases.xlsx")
+    def create_knowledge_db(self, idx_path):
+        raw_knowledge_data = self.read_data_from_file("data/hallucination_cases.xlsx")
         print(f"len(knowledge) = {len(raw_knowledge_data)}")
         processed_records = self.process_knowledge(raw_knowledge_data, split="---------")
         print(processed_records[0])
-        self.index_name = idx_name
-        self.vector_db_operator.store_data_to_db(processed_records, idx_name=idx_name)
+        self.index_name = idx_path
+        self.vector_db_operator.store_data_to_db(processed_records, idx_name=idx_path)
 
-    def search_in_vector_db(self, text, index=None):
+    def search_in_vector_db(self, text, k=10, index=None):
         if index is None:
             index = self.index_name
-        self.vector_db_operator.search(text, index)
+        return self.vector_db_operator.search(text, index, k)
+
+    def _extract_idx_for_a_qa(self, qa, brand, existing_knowledge=None):
+        # english_qa = Translator().get_instance().language_unification(qa)
+        q_and_a = qa.strip().split("Answer:")
+        if len(q_and_a) <= 1:
+            return None
+        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace("Question:", "").strip())[0]
+        _, english_a = Translator().get_instance().language_unification(q_and_a[1].strip())[0]
+        # print(f"english_q = {english_q}, english_a = {english_a}")
+        res = self.title_generation_pipe([english_q, english_a])
+        # print(f"res = {res}")
+        q_keyword = res[0]['generated_text'].strip()
+        a_keyword = res[1]['generated_text'].strip()
+        # print(f"q = {q_keyword} + a = {a_keyword}")
+        if existing_knowledge is None:
+            return brand + ":" + q_keyword + "|" + a_keyword
+        else:  # try to choose a more comprehensive idx between the 2
+            print(f" duplicates !!!!!! original qa idx = {existing_knowledge}")
+            if len(q_keyword + "|" + a_keyword) <= len(
+                    existing_knowledge.split(":")[1].strip()) and brand not in existing_knowledge.split(":")[
+                0].split(","):  # the original one is good
+                return brand + "," + existing_knowledge
+            else:  # the new one is good
+                if brand not in existing_knowledge.split(":")[0].split(","):
+                    return existing_knowledge.split(":")[0].strip() + "," + brand + ":" + q_keyword + "|" + a_keyword
+                else:
+                    return existing_knowledge.split(":")[0].strip() + ":" + q_keyword + "|" + a_keyword
 
     def process_knowledge(self, raw_knowledge_data, split="---------"):
         knowledge_dict = {}
-        for data in raw_knowledge_data[:1]:
+        for data in raw_knowledge_data:
             brand = self.extract_brand_name(data)  # No brand: No-Brand
             qa_pairs = data.split(split)
+            qa_pairs = [item.strip() for item in qa_pairs if item.strip()]
             for qa in qa_pairs:
-                q_and_a = qa.strip().split("Answer:")
-                res = self.title_generation_pipe([q_and_a[0].replace("Question:", "").strip(), q_and_a[1].strip()])
-                q_keyword = res[0]['generated_text'].strip()
-                a_keyword = res[1]['generated_text'].strip()
-                if qa not in knowledge_dict:
-                    knowledge_dict[qa] = brand + ":" + q_keyword + "|" + a_keyword
-                else:  # try to choose a more comprehensive idx between the 2
-                    print(f" duplicates !!!!!!")
-                    if len(q_keyword + "|" + a_keyword) <= len(
-                            knowledge_dict[qa].split(":")[1].strip()):  # the original one is good
-                        knowledge_dict[qa] = brand + "," + knowledge_dict[qa]
-                    else:  # the new one is good
-                        knowledge_dict[qa] = knowledge_dict[qa].split(":")[
-                                                 0].strip() + "," + brand + ":" + q_keyword + "|" + a_keyword
-        return ["[" + index + "] " + data for data, index in knowledge_dict.items()]
+                existing_knowledge = None
+                if qa in knowledge_dict:
+                    existing_knowledge = knowledge_dict[qa]
+                idx = self._extract_idx_for_a_qa(qa, brand, existing_knowledge)
+                if idx is not None:
+                    knowledge_dict[qa] = idx
+                print(f"idx = {idx}")
+        return ["[" + idx + "] " + data for data, idx in knowledge_dict.items()]
 
     def extract_brand_name(self, data):
-        org_detection_res = self.brand_extractor(data)
+        _, english_data = Translator().get_instance().language_unification(data)[0]
+        org_detection_res = self.brand_extractor(english_data)
         brand_name = "No-Brand"
         for d in org_detection_res:
             if d['entity'] == 'B-ORG':
@@ -124,5 +140,5 @@ class HallucinationDataOperator():
 
 if __name__ == '__main__':
     p = HallucinationDataOperator()
-    p.create_knowledge_db(idx_name="idx.bin")
-    p.search_in_vector_db("where is your office?", "idx.bin")
+    p.create_knowledge_db(idx_path="idx.bin")
+    p.search_in_vector_db("How to Charge the Camera", k=10, index="idx.bin")
