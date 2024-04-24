@@ -21,7 +21,6 @@ if __name__ == '__main__':
 
     grounding_tool = GroundingTool()
     enhanced_prompt = grounding_tool.grounding(prompt)
-    print(enhanced_prompt)
 
     to_ask = True
     while to_ask:
@@ -35,3 +34,4 @@ if __name__ == '__main__':
                                                                                "regenerate responses"
         else:
             print(f"The output is safe: {new_text}")
+        print("===================")

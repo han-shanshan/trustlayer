@@ -11,10 +11,8 @@ class GroundingTool:
         language_type, english_text = Translator().get_instance().language_unification(text)
         query_key = self.data_operator.title_generation_pipe(english_text)[0]['generated_text']
         brand_name = self.data_operator.extract_brand_name(english_text)
-        general_knowledge = ""
         prod_knowledge = self.data_operator.search_in_vector_db(text=brand_name + ":" + query_key, index=self.index)
-
-        query_prompt = "We received a query from our customer, as follows: " + text + "\n" + str(general_knowledge) + \
+        query_prompt = "We received a query from our customer, as follows: " + text + "\n" + \
                        "\n Please find reference information as follows: " + str(prod_knowledge)
         if language_type != "en":
             print(f"query_prompt={query_prompt}")

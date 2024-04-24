@@ -50,16 +50,18 @@ class HallucinationDataOperator():
             data_list[-1] = data_list[-1][:-1]
         return data_list
 
-    def read_data_from_file(self, file_path, retrieved_col_name="knowledge"):
+    def read_data_from_file(self, file_path, retrieved_col_name="all"):  # "all": retrieve all column
         file_type = file_path.split(".")[-1].lower()
         if file_type.lower() == "txt":
-            return self.read_from_txt_file(file_path=file_path, retrieved_col_name=retrieved_col_name)
+            return self.read_from_txt_file(file_path=file_path)
         if file_type.lower() == "csv":
             df = pd.read_csv(file_path)
         elif file_type.lower() == "xlsx":
             df = pd.read_excel(file_path)
         else:
             raise TypeError(f"file type {file_type} does not exist. ")
+        if retrieved_col_name == "all":
+            return df
         column_name_exist_flag = False
         for column in df.columns.tolist():
             if retrieved_col_name.lower() in column.lower():
@@ -71,18 +73,29 @@ class HallucinationDataOperator():
             raise ValueError(f"Column name {retrieved_col_name} does not exist. ")
         return [word for word in list(set(df[retrieved_col_name])) if type(word) is str]
 
-    def create_knowledge_db(self, idx_path):
-        raw_knowledge_data = self.read_data_from_file("data/hallucination_cases.xlsx")
+    def create_knowledge_db(self, idx_path, data_file_path="data/hallucination_cases.xlsx"):
+        raw_knowledge_data = self.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
         print(f"len(knowledge) = {len(raw_knowledge_data)}")
-        processed_records = self.process_knowledge(raw_knowledge_data, split="---------")
-        print(processed_records[0])
+        idxs, plaintext_knowledge = self.process_knowledge(raw_knowledge_data, split="---------")
+        print(f"sample of processed record: idxs[0] = {idxs[0]}")
+        print(f"sample of processed record: plaintext_knowledge[0] = {plaintext_knowledge[0]}")
         self.index_name = idx_path
-        self.vector_db_operator.store_data_to_db(processed_records, idx_name=idx_path)
+        self.vector_db_operator.store_data_to_vector_db(idxs, idx_name=idx_path)
+        df = pd.DataFrame(plaintext_knowledge)
+        df.to_csv('plaintext_knowledge_data.csv', index=False)
 
     def search_in_vector_db(self, text, k=10, index=None):
         if index is None:
             index = self.index_name
-        return self.vector_db_operator.search(text, index, k)
+        results = self.vector_db_operator.search(text, index, k)
+
+        df = self.read_data_from_file("plaintext_knowledge_data.csv")
+
+        # join by: df1.ann == data.index
+        results = pd.merge(results, df, left_on='ann', right_index=True)
+        print(f"retrieved knowledge: \n{results}")
+        # results.to_csv('knowledge_data.csv', index=False)
+        return results
 
     def _extract_idx_for_a_qa(self, qa, brand, existing_knowledge=None):
         q_and_a = qa.strip().split("Answer:")
@@ -124,7 +137,7 @@ class HallucinationDataOperator():
                 if idx is not None:
                     knowledge_dict[qa] = idx
                 print(f"idx = {idx}")
-        return ["[" + idx + "] " + data for data, idx in knowledge_dict.items()]
+        return [idx for _, idx in knowledge_dict.items()], ["[" + idx + "] " + data for data, idx in knowledge_dict.items()]
 
     def extract_brand_name(self, data):
         _, english_data = Translator().get_instance().language_unification(data)
@@ -139,5 +152,5 @@ class HallucinationDataOperator():
 
 if __name__ == '__main__':
     p = HallucinationDataOperator()
-    p.create_knowledge_db(idx_path="idx.bin")
+    p.create_knowledge_db(idx_path="idx.bin", data_file_path="data/hallucination_cases.xlsx")
     p.search_in_vector_db("How to Charge the Camera", k=10, index="idx.bin")
