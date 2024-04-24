@@ -52,7 +52,7 @@ class Translator:
         original_language = self.language_detector(text, top_k=1, truncation=True)[0]['label']
         if original_language == "en":
             return original_language, text
-        self.tokenizer.src_lang = self.language_mapping_dict[original_language[0]['label']]
+        self.tokenizer.src_lang = self.language_mapping_dict[original_language]
         encoded_hi = self.tokenizer(text, return_tensors="pt")
         generated_tokens = self.model.generate(**encoded_hi)
         return original_language, self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]

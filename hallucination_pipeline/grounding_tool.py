@@ -12,8 +12,6 @@ class GroundingTool:
         query_key = self.data_operator.title_generation_pipe(english_text)[0]['generated_text']
         brand_name = self.data_operator.extract_brand_name(english_text)
         general_knowledge = ""
-        print(f"brand = {brand_name}")
-        print(f"query_key = 「query_key」{query_key}")
         prod_knowledge = self.data_operator.search_in_vector_db(text=brand_name + ":" + query_key, index=self.index)
 
         query_prompt = "We received a query from our customer, as follows: " + text + "\n" + str(general_knowledge) + \
