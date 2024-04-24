@@ -10,3 +10,4 @@ CUSTOMIZED_HALLUCINATION_TASK_NAME = "customized_hallucination"
 ############ MODEL #############
 MODEL_NAME_BERT_BASE = "google-bert/bert-base-uncased"
 MODEL_NAME_TINYLAMMA = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+FOX = "/raid/user/models/femma_1b_stage2-pt9/checkpoint-366250"
