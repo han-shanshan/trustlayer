@@ -1,6 +1,7 @@
-from hallucination_pipeline.offline_processing.hallucination_training_data_processor import HallucinationTrainingDataProcessor
+from hallucination_pipeline.offline_processing.hallucination_training_data_processor import \
+    HallucinationTrainingDataProcessor
 from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
-from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX
+from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX, MODEL_NAME_BERT_BASE
 from multitask_lora.inference_engine import InferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
@@ -12,7 +13,11 @@ from multitask_lora.config_manager import ConfigManager
 class HallucinationTrainingEngine(TrainingEngine):
     def __init__(self, base_model_name):
         super().__init__(base_model_name, task_name=CUSTOMIZED_HALLUCINATION_TASK_NAME)
-
+        self.model_name = self.base_model_name
+        if self.base_model_name in [MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE]:
+            self.model_name = self.base_model_name.split("/")[1]
+        else:
+            self.model_name = "Fox"
 
     def set_task_type(self, task_name):
         self.task_name = CUSTOMIZED_HALLUCINATION_TASK_NAME
@@ -22,15 +27,14 @@ class HallucinationTrainingEngine(TrainingEngine):
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         pretrained_model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
-                                                                  num_labels=len(label_dicts),
-                                                                  id2label=id2label,
-                                                                  label2id=label2id,
-                                                                  load_in_8bit=False
-                                                                  )
+                                                                              num_labels=len(label_dicts),
+                                                                              id2label=id2label,
+                                                                              label2id=label2id,
+                                                                              load_in_8bit=False
+                                                                              )
         if self.base_model_name == FOX:
             self.base_model_name = MODEL_NAME_TINYLAMMA
         return pretrained_model
-
 
     def train(self):
         data_processor = HallucinationTrainingDataProcessor()
@@ -49,7 +53,7 @@ class HallucinationTrainingEngine(TrainingEngine):
         print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
-        output_dir = self.base_model_name.split("/")[1] + "-" + self.task_name
+        output_dir = self.model_name + "-" + self.task_name
 
         bert_peft_trainer = Trainer(
             model=model,
