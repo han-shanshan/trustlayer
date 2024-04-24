@@ -1,4 +1,4 @@
-from hallucination_pipeline.data_operator import HallucinationDataOperator
+from hallucination_pipeline.offline_processing.data_operator import HallucinationDataOperator
 from strengthenllm.translator import Translator
 
 

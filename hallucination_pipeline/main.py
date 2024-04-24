@@ -1,6 +1,6 @@
 import sys
-from hallucination_pipeline.post_processing import PostProcessor
-from hallucination_pipeline.grounding_tool import GroundingTool
+from hallucination_pipeline.online_processing.post_processing import PostProcessor
+from hallucination_pipeline.online_processing.grounding_tool import GroundingTool
 from hallucination_pipeline.test_use_case import warranty_use_case, fedml_security_detector_config
 from trust_libs.trust_detector import TrustDetector
 

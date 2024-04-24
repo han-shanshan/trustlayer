@@ -89,7 +89,7 @@ class HallucinationDataOperator():
             index = self.index_name
         results = self.vector_db_operator.search(text, index, k)
 
-        df = self.read_data_from_file("plaintext_knowledge_data.csv")
+        df = self.read_data_from_file("../plaintext_knowledge_data.csv")
 
         # join by: df1.ann == data.index
         results = pd.merge(results, df, left_on='ann', right_index=True)
@@ -152,5 +152,5 @@ class HallucinationDataOperator():
 
 if __name__ == '__main__':
     p = HallucinationDataOperator()
-    p.create_knowledge_db(idx_path="idx.bin", data_file_path="data/hallucination_cases.xlsx")
+    p.create_knowledge_db(idx_path="../idx.bin", data_file_path="../data/hallucination_cases.xlsx")
     p.search_in_vector_db("How to Charge the Camera", k=10, index="idx.bin")

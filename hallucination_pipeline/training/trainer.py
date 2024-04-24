@@ -1,4 +1,4 @@
-from hallucination_pipeline.hallucination_training_data_processor import HallucinationTrainingDataProcessor
+from hallucination_pipeline.training.hallucination_training_data_processor import HallucinationTrainingDataProcessor
 from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA
 from multitask_lora.inference_engine import InferenceEngine
@@ -30,7 +30,7 @@ class HallucinationTrainingEngine(TrainingEngine):
     def train(self):
         data_processor = HallucinationTrainingDataProcessor()
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info(
-            file_path="data/hallucination_cases.xlsx")
+            file_path="../data/hallucination_cases.xlsx")
         print(f"id2labels={id2labels}")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)

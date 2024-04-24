@@ -1,5 +1,5 @@
-from hallucination_pipeline.hallucination_type_detector import HallucinationTypeDetector
-from hallucination_pipeline.wrapper_for_hallucination_pipe import HallucinationPipePostWrapper
+from hallucination_pipeline.online_processing.hallucination_type_detector import HallucinationTypeDetector
+from hallucination_pipeline.online_processing.wrapper_for_hallucination_pipe import HallucinationPipePostWrapper
 
 
 class PostProcessor:
