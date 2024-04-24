@@ -65,7 +65,11 @@ class InferenceEngine:
                                                                         id2label=self.config[self.task_name]
                                                                         )
         base_model.load_adapter(path)
-        encoding = self.tokenizer(text, return_tensors="pt")
+        if isinstance(text, list):
+            encoding = self.tokenizer(text[0], text_pair=text[1], padding=True, truncation=True, return_tensors="pt")
+        else:
+            encoding = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+        # encoding = self.tokenizer(text, return_tensors="pt")
         encoding = {k: v.to(base_model.device) for k, v in encoding.items()}
         outputs = base_model(**encoding)
         logits = outputs.logits

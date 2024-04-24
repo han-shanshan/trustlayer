@@ -49,7 +49,7 @@ class Translator:
         return mapping, {value: key for key, value in detector_languages.items()}
 
     def language_unification(self, text):
-        original_language = self.language_detector(text, top_k=1, truncation=True)
+        original_language = self.language_detector(text, top_k=1, truncation=True)[0]['label']
         if original_language == "en":
             return original_language, text
         self.tokenizer.src_lang = self.language_mapping_dict[original_language[0]['label']]

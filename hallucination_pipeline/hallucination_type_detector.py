@@ -1,29 +1,30 @@
 from typing import Union, Optional
 
 from transformers import pipeline
+
+from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
+from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
+from multitask_lora.inference_engine import InferenceEngine
 from trust_libs.securellm.detector_base import BaseTrustDetector
 
 
 class HallucinationTypeDetector(BaseTrustDetector):
-    def __init__(self, config):
+    def __init__(self, config=HALLUCINATION_INFERENCE_CONFIG):
         super().__init__(config)
-        self.pipeline = pipeline('text-classification',
-                                 model='unitary/toxic-bert', tokenizer='bert-base-uncased',
-                                 function_to_apply='sigmoid', return_all_scores=True)  # todo: change it to our model
-        self.res = []
+        self.res = None
+        self.inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
+                                                problem_type="single_label_classification")
 
-    def get_detection_results(self, text, reference_text=None):
-        scores = self.pipeline(text)[0]
-        print(f"detection scores: {scores}")
-        results = []
-        for d in scores:
-            if d['score'] > self.boundary:
-                results.append((d['label'], d['score']))
-        print(f"The input \"{text}\" is detected as {results}")
-        return results
+    def get_detection_results(self, output, reference_text=None):
+        result = self.inference_engine.inference([reference_text, output])
+        print(f"result = {result}")
+        return result
 
     def is_unsafe_content_detected(self, text: Union[str, list], reference_text: Optional[Union[str, list]] = None):
         self.res = self.get_detection_results(text, reference_text)
-        if len(self.res) > 0:
-            return True
-        return False
+        if self.res == "Normal response":
+            return False
+        return True
+
+    def get_error_type(self):
+        return self.res
