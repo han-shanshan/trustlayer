@@ -1,1 +1,7 @@
 .idea
+.model
+.safetensors
+.pt
+.csv
+.xlsx
+.bin

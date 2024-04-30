@@ -1,4 +1,3 @@
-from multitask_lora.constants import FOX_BASE_CPU
 
 recommending_competitor_use_case = {
     "prompt": "I just purchased the aiper seagull pro and it is getting stuck on my main drain. I am returning to "
@@ -105,8 +104,8 @@ fedml_security_detector_config = {
 }
 
 HALLUCINATION_INFERENCE_CONFIG = {
-        # "base_model_name_or_path": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        "base_model_name_or_path": FOX_BASE_CPU,
+        "base_model_name_or_path": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        # "base_model_name_or_path": FOX_BASE_CPU,
         "customized_hallucination": {
             "0": 'To fabricate something other than knowledge.',
             "1": 'Recommendations',
