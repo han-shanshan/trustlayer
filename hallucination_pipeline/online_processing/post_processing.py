@@ -1,5 +1,5 @@
 from hallucination_pipeline.online_processing.hallucination_type_detector import HallucinationTypeDetector
-from hallucination_pipeline.online_processing.wrapper_for_hallucination_pipe import HallucinationPipePostWrapper
+from wrapper.wrapper_base import BaseWrapper
 
 
 class PostProcessor:
@@ -20,3 +20,19 @@ class PostProcessor:
         return new_text, to_reask, logging_info
 
 
+class HallucinationPipePostWrapper(BaseWrapper):
+    def __init__(self, config=None):
+        super().__init__(config)
+
+    def process(self, original_text):
+        config = {
+            "substitution_dictionary": {"Polaris": "seagull"}
+        }
+        competitor_wrapper = SubstituteWrapper(
+            config)  # todo: write a new wrapper that takes product list for each company
+        new_text = competitor_wrapper.process(original_text)
+
+        return new_text
+
+    def is_error_fixed(self):  # todo
+        pass

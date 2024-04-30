@@ -14,7 +14,7 @@ https://github.com/huggingface/peft/discussions/661
 """
 
 
-class InferenceEngine:
+class TrustInferenceEngine:
     def __init__(self, default_task, config=None, problem_type=None):
         self.task_name = default_task
         if config is not None:

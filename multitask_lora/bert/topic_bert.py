@@ -1,5 +1,5 @@
 from multitask_lora.constants import TOPIC_TASK_NAME, MODEL_NAME_BERT_BASE
-from multitask_lora.inference_engine import InferenceEngine
+from multitask_lora.trust_inference_engine import TrustInferenceEngine
 import os
 
 from multitask_lora.training_engine import TrainingEngine
@@ -13,5 +13,5 @@ if __name__ == '__main__':
     # trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
     # trainer.train()
     text = "i'm happy hahaha"
-    inference_engine = InferenceEngine(default_task=TOPIC_TASK_NAME)
+    inference_engine = TrustInferenceEngine(default_task=TOPIC_TASK_NAME)
     print(inference_engine.inference(text))

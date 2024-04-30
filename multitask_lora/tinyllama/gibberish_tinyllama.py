@@ -1,6 +1,6 @@
 from multitask_lora.constants import SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     MODEL_NAME_TINYLAMMA, TOXICITY_TASK_NAME, HALLUCINATION_TASK_NAME
-from multitask_lora.inference_engine import InferenceEngine
+from multitask_lora.trust_inference_engine import TrustInferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 import os
 import torch
@@ -20,5 +20,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=TASK_NAME)
+    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))

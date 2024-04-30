@@ -1,8 +1,10 @@
 import sys
 import yaml
-from llm_inference.inference import Inference
 from trust_libs.trust_detector import TrustDetector
 from wrapper.customization_wrapper import CustomizationWrapper
+
+def fake_LLM_API_for_testing(text=None):
+    return text
 
 if __name__ == '__main__':
     with open("config.yaml", "r") as file:
@@ -18,7 +20,7 @@ if __name__ == '__main__':
 
     print("---------------------Inference---------------------")
 
-    raw_output = Inference().infer(prompt)
+    raw_output = fake_LLM_API_for_testing(prompt)
 
     print("---------------------Detect unsafe contents in output---------------------")
     output_trust_detector = TrustDetector(config['postprocessing_args'])

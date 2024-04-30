@@ -2,7 +2,7 @@ from hallucination_pipeline.offline_processing.hallucination_training_data_proce
     HallucinationTrainingDataProcessor
 from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX, MODEL_NAME_BERT_BASE
-from multitask_lora.inference_engine import InferenceEngine
+from multitask_lora.trust_inference_engine import TrustInferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
 from transformers import Trainer
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME,
-                                       config=HALLUCINATION_INFERENCE_CONFIG,
-                                       problem_type="single_label_classification")
+    inference_engine = TrustInferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME,
+                                            config=HALLUCINATION_INFERENCE_CONFIG,
+                                            problem_type="single_label_classification")
     print(inference_engine.inference([text, text]))

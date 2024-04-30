@@ -4,7 +4,7 @@ from transformers import pipeline
 
 from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
-from multitask_lora.inference_engine import InferenceEngine
+from multitask_lora.trust_inference_engine import TrustInferenceEngine
 from trust_libs.securellm.detector_base import BaseTrustDetector
 
 
@@ -12,8 +12,8 @@ class HallucinationTypeDetector(BaseTrustDetector):
     def __init__(self, config=HALLUCINATION_INFERENCE_CONFIG):
         super().__init__(config)
         self.res = None
-        self.inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
-                                                problem_type="single_label_classification")
+        self.inference_engine = TrustInferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
+                                                     problem_type="single_label_classification")
 
     def get_detection_results(self, output, reference_text=None):
         result = self.inference_engine.inference([reference_text, output])

@@ -1,5 +1,5 @@
 from multitask_lora.constants import GIBBERISH_TASK_NAME, MODEL_NAME_BERT_BASE
-from multitask_lora.inference_engine import InferenceEngine
+from multitask_lora.trust_inference_engine import TrustInferenceEngine
 from multitask_lora.training_engine import TrainingEngine
 import os
 
@@ -17,5 +17,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=TASK_NAME)
+    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))
