@@ -1,7 +1,7 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
-    HALLUCINATION_TASK_NAME
+    HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE
 import torch
 import json
 import re
@@ -33,12 +33,18 @@ class TrustInferenceEngine:
             self.problem_type = "single_label_classification"
         else:
             self.problem_type = "multi_label_classification"
+        self.model_name = self.base_model_name
+        if self.base_model_name in [MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE]:
+            self.model_name = self.base_model_name.split("/")[1]
+        else:
+            self.model_name = "Fox"
+
 
     def set_task(self, task_type):
         self.task_name = task_type
 
     def get_checkpoint_directory(self, checkpoint_id=None):
-        directory = self.base_model_name.split("/")[1] + "-" + self.task_name
+        directory = "../model/adapters/" + self.model_name + "-" + self.task_name
         final_model_path = directory + "-final"
         if os.path.isdir(final_model_path):
             entries = os.listdir(final_model_path)  # List all entries in the directory
@@ -58,6 +64,7 @@ class TrustInferenceEngine:
 
     def inference(self, text, checkpoint_id=None):
         path = self.get_checkpoint_directory(checkpoint_id)
+        print(f"self.base_model_name + {self.base_model_name}")
         print(f"model path = {path}")
         base_model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                         problem_type=self.problem_type,
