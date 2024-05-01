@@ -6,7 +6,7 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from multitask_lora.config_manager import ConfigManager
 from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA
+    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU
 from multitask_lora.data_processor import DataProcessor
 import evaluate
 
@@ -84,7 +84,7 @@ class TrainingEngine:
 
     def get_tokenizer(self, model):
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
-        if self.base_model_name in [MODEL_NAME_TINYLAMMA]:
+        if self.base_model_name in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
             # tokenizer.pad_token = tokenizer.eos_token
             # tokenizer.padding_side = 'right'  # to prevent warnings
             tokenizer.pad_token = tokenizer.eos_token
