@@ -1,6 +1,6 @@
 from peft import LoraConfig, get_peft_model, TaskType
 from transformers import TrainingArguments
-from multitask_lora.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU, FOX_BASE_CPU
+from multitask_lora.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU
 
 
 class ConfigManager:
@@ -9,7 +9,7 @@ class ConfigManager:
         self.model = model
 
     def get_training_config(self, output_dir, batch_size=8):
-        if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, FOX_BASE_CPU]:
+        if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
             num_train_epochs = 20
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
@@ -43,7 +43,7 @@ class ConfigManager:
             )
 
     def get_lora_config(self):
-        if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, FOX_BASE_CPU]:
+        if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
             return LoraConfig(
                 r=16,
                 lora_alpha=32,
