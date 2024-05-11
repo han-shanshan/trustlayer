@@ -2,7 +2,7 @@ import numpy as np
 from datasets import DatasetDict, Dataset
 from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
-from strengthenllm.translator import Translator
+from utils.translator import Translator
 
 
 class HallucinationTrainingDataProcessor(DataProcessor):

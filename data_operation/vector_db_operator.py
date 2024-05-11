@@ -35,7 +35,7 @@ class VectorDBOperator():
     def generate_vectors(self, data_list):  # todo: try more encoding methods
         return self.encoder.encode(data_list)
 
-    def search(self, search_text, idx_name, k=10):  # index.ntotal
+    def search_vectors(self, search_text, idx_name, k=10):  # index.ntotal
         import numpy as np
         search_vector = self.encoder.encode(search_text)
         _vector = np.array([search_vector])

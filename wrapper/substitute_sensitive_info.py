@@ -1,4 +1,4 @@
-from storage.basic_data_storage_operations import read_substitutions_from_file
+from utils.plaintext_data_storage_operations import read_substitutions_from_file
 from wrapper.wrapper_base import BaseWrapper
 
 
@@ -8,7 +8,7 @@ class SubstituteWrapper(BaseWrapper):
         if "substitution_dictionary" in config:
             self.substitution_dictionary = config['substitution_dictionary']
         else:
-            self.substitution_dictionary = read_substitutions_from_file("./storage/substitutions.txt")
+            self.substitution_dictionary = read_substitutions_from_file("./data_operation/substitutions.txt")
 
     def process(self, original_text):
         for k in self.substitution_dictionary.keys():

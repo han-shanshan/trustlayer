@@ -1,10 +1,8 @@
 WRAPPER_DB_NAME = "wrapper_db"
 
 
-# Loading the index
-# index_loaded = faiss.read_index("my_index.faiss")
-def write_origin_substitution_pairs_to_db(tuples: list):  # (origin, substitution)
-    with open("substitutions.txt", "w") as file:
+def write_origin_substitution_pairs_to_db(tuples: list, file_path="substitutions.txt"):  # (origin, substitution)
+    with open(file_path, "w") as file:
         for a, b in tuples:
             file.write(f"{a.lower()}, {b}\n") # set a to lower-case for convenient comparisons; do not set b to lower case as there might be capital letters
     print("writing finished!")

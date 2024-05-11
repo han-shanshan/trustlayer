@@ -1,8 +1,8 @@
-from hallucination_pipeline.offline_processing.data_operator import HallucinationDataOperator
-from strengthenllm.translator import Translator
+from hallucination_pipeline.offline_processing.hallucination_data_operator import HallucinationDataOperator
+from utils.translator import Translator
 
 
-class GroundingTool:
+class HallucinationGroundingTool:
     def __init__(self):
         self.data_operator = HallucinationDataOperator()
         self.index = "idx.bin"

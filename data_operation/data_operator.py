@@ -1,14 +1,9 @@
 import pandas as pd
 from transformers import pipeline
 import re
-from strengthenllm.translator import Translator
-from storage.vector_db_operator import VectorDBOperator
-
-
-def read_data_file(file_path):
-    with open(file_path, 'r') as file:
-        content = file.read()
-    return content
+from data_operation.data_reader import DataReader
+from utils.translator import Translator
+from data_operation.vector_db_operator import VectorDBOperator
 
 
 def retrieve_company_name(text, starting_position):
@@ -20,8 +15,9 @@ def retrieve_company_name(text, starting_position):
     else:
         return ""
 
+
 # todo: remove duplicate keywords in idx, e.g., idx like aaabbb - aaabbb - aaabbb
-class HallucinationDataOperator():
+class DataOperator:
     """
     brand_extractor pipes: "dslim/bert-base-NER-uncased" performs worse than dslim/bert-base-NER?? todo: to double check with more samples
     keyword extraction pipes:
@@ -36,45 +32,8 @@ class HallucinationDataOperator():
         self.vector_db_operator = VectorDBOperator()
         self.index_name = ""
 
-    @staticmethod
-    def read_from_txt_file(file_path, retrieved_col_name):
-        # the txt file only contain values in the knowledge column;
-        # the file is created by copying the knowledge column from the original data file
-        raw_data = read_data_file(file_path)
-        data_list = raw_data.split("\"\n\"")
-        if retrieved_col_name.lower() == data_list[0].lower():
-            data_list = data_list[1:]
-        if data_list[0].startswith("\""):
-            data_list[0] = data_list[0][1:]
-        if data_list[-1].endswith("\""):
-            data_list[-1] = data_list[-1][:-1]
-        return data_list
-
-    def read_data_from_file(self, file_path, retrieved_col_name="all"):  # "all": retrieve all column
-        file_type = file_path.split(".")[-1].lower()
-        if file_type.lower() == "txt":
-            return self.read_from_txt_file(file_path=file_path)
-        if file_type.lower() == "csv":
-            df = pd.read_csv(file_path)
-        elif file_type.lower() == "xlsx":
-            df = pd.read_excel(file_path)
-        else:
-            raise TypeError(f"file type {file_type} does not exist. ")
-        if retrieved_col_name == "all":
-            return df
-        column_name_exist_flag = False
-        for column in df.columns.tolist():
-            if retrieved_col_name.lower() in column.lower():
-                column_name_exist_flag = True
-                if retrieved_col_name != column:
-                    retrieved_col_name = column
-                break
-        if not column_name_exist_flag:
-            raise ValueError(f"Column name {retrieved_col_name} does not exist. ")
-        return [word for word in list(set(df[retrieved_col_name])) if type(word) is str]
-
     def create_knowledge_db(self, idx_path, data_file_path="data/hallucination_cases.xlsx"):
-        raw_knowledge_data = self.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
+        raw_knowledge_data = DataReader.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
         print(f"len(knowledge) = {len(raw_knowledge_data)}")
         idxs, plaintext_knowledge = self.process_knowledge(raw_knowledge_data, split="---------")
         print(f"sample of processed record: idxs[0] = {idxs[0]}")
@@ -87,9 +46,8 @@ class HallucinationDataOperator():
     def search_in_vector_db(self, text, plaintext_file_path, k=10, index=None):
         if index is None:
             index = self.index_name
-        results = self.vector_db_operator.search(text, index, k)
-
-        df = self.read_data_from_file(plaintext_file_path)
+        results = self.vector_db_operator.search_vectors(text, index, k)
+        df = DataReader.read_data_from_file(plaintext_file_path)
 
         # join by: df1.ann == data.index
         results = pd.merge(results, df, left_on='ann', right_index=True)
@@ -137,7 +95,8 @@ class HallucinationDataOperator():
                 if idx is not None:
                     knowledge_dict[qa] = idx
                 print(f"idx = {idx}")
-        return [idx for _, idx in knowledge_dict.items()], ["[" + idx + "] " + data for data, idx in knowledge_dict.items()]
+        return [idx for _, idx in knowledge_dict.items()], ["[" + idx + "] " + data for data, idx in
+                                                            knowledge_dict.items()]
 
     def extract_brand_name(self, data):
         _, english_data = Translator().get_instance().language_unification(data)
@@ -148,7 +107,6 @@ class HallucinationDataOperator():
                 brand_name = retrieve_company_name(data, d['start'])
                 break
         return brand_name
-
 
 # if __name__ == '__main__':
 #     p = HallucinationDataOperator()
