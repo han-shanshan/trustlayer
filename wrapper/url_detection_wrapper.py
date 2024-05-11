@@ -1,15 +1,19 @@
+import logging
+import os
+
 from data_operation.data_reader import DataReader
 from wrapper.wrapper_base import BaseWrapper
 import re
 from requests.exceptions import HTTPError, Timeout, RequestException
 import requests
-
+from pysafebrowsing import SafeBrowsing
 """Other methods to detect malicious URLs: https://huggingface.co/DunnBC22/codebert-base-Malicious_URLs """
 
 
 def extract_urls(original_text):
     # pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
     pattern = r'https?://(?:(?!https?://)[a-zA-Z0-9$-_@.&+!*\\(\\),%])+'
+
     urls = re.findall(pattern, original_text)
     return urls
 
@@ -88,72 +92,91 @@ def is_url_reachable(url):
         511: "Network Authentication Require"
     }
     try:
+        logging.info(f"url = {url}")
         web_response = requests.get(url, timeout=2)
         status_code_first_digit = int(str(web_response.status_code)[0])
         if status_code_first_digit == 2:
-            print(
+            logging.info(
                 f"Success! {url}, status: {web_response.status_code}, {general_statuses[status_code_first_digit]}: {statuses[web_response.status_code]}")
             return True
         else:
-            print(
+            logging.info(
                 f"Failure! {url}, status: {web_response.status_code}, {general_statuses[status_code_first_digit]}: {statuses[web_response.status_code]}")
             return False
     except HTTPError as http_err:
         status_code_first_digit = int(str(http_err.response.status_code)[0])
-        print(
+        logging.info(
             f"Failure! {url}, status: {http_err.response.status_code}, {general_statuses.get(status_code_first_digit, 'Error')}: {statuses[http_err.response.status_code]}")
         return False
     except Timeout:
-        print("Failure! Timeout error. The request timed out.")
+        logging.info("Failure! Timeout error. The request timed out.")
         return False
     except RequestException as e:  # General catch-all for requests exceptions that are not Timeout or HTTPError
-        print(f"Request failed: {e}")
+        logging.info(f"Request failed: {e}")
         return False
 
 
 def is_phishing_url_with_phishtank(url):  # the API is not working currently
     endpoint = "https://checkurl.phishtank.com/checkurl/"
     response = requests.post(endpoint, data={"url": url, "format": "json"})
-    print(response)
+    logging.info(response)
 
 
 class URLDetectionWrapper(BaseWrapper):
     def __init__(self, config):
         super().__init__(config)
-        self.api_key = DataReader.read_data_file("../utils/api_key.apikey")
-        print(f"api key = {self.api_key}")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, '..', 'utils', 'api_key.apikey')
+        self.api_key = DataReader.read_data_file(file_path)
 
     def is_phishing_url_with_google_safe_browsing(self, url):
         # e.g., http://malware.testing.google.test/testing/malware/', http://ianfette.org
         # This API & key can only be utilized on public data, e.g., public Maps data showing restaurant information.
         # Fail to detect some phishing urls
-        from pysafebrowsing import SafeBrowsing
         s = SafeBrowsing(key=self.api_key)
         r = s.lookup_urls([url])
-        print(f"url = {url}, r = {r}")
+        # print(f"url = {url}, r = {r}")
         return r[url]['malicious']
+
+    def get_malicious_urls(self, url_list):
+        malicious_url_list = []
+        s = SafeBrowsing(key=self.api_key)
+        r = s.lookup_urls(url_list)
+        # print(f"url = {url_list}, r = {r}")
+        for k in r.keys():
+            if r.get(k).get('malicious'):
+                malicious_url_list.append(k)
+        return malicious_url_list
 
     def process(self, original_text):
         urls = extract_urls(original_text)
-        if urls:
-            result = ""
-            for url in urls:
-                if self.is_phishing_url_with_google_safe_browsing(url):
-                    result = result + "URL <" + url + "> is malicious. "
-                elif not is_url_reachable(url):
-                    result = result + f"URL <{url}> is not reachable."
-            return f"[Detected URLs: {urls}. {result}] {original_text}"
-        else:
+        if not urls:
             return original_text
+        malicious_urls = self.get_malicious_urls(urls)
+        unreachable_urls = []
+        for url in set(urls).difference(set(malicious_urls)):
+            if not is_url_reachable(url):
+                unreachable_urls.append(url)
+        result = f"Detected URLs: {urls}. "
+        if len(malicious_urls) > 0:
+            result = f"{result}Malicious URLs: {malicious_urls}. "
+        if len(unreachable_urls) > 0:
+            result = f"{result}Unreachable URLs: {unreachable_urls}. "
+        return f"[{result}] {original_text}"
 
+    def process_problematic_urls(self, original_text):
+        urls = extract_urls(original_text)
+        if not urls:
+            return original_text
+        malicious_urls = self.get_malicious_urls(urls)
+        unreachable_urls = []
+        for url in set(urls).difference(set(malicious_urls)):
+            if not is_url_reachable(url):
+                unreachable_urls.append(url)
+        result = f"Detected URLs: {urls}. "
+        problematic_list = malicious_urls
+        problematic_list.extend(x for x in unreachable_urls if x not in malicious_urls)
+        if len(problematic_list) > 0:
+            result = f"{result}Problematic URLs: {problematic_list}. "
+        return f"[{result}] {original_text}"
 
-if __name__ == '__main__':
-    wrapper = URLDetectionWrapper(config=None)
-    # wrapper.is_phishing_url_with_google_safe_browsing("http://www.travelswitchfly.com/")
-    # wrapper.is_phishing_url_with_google_safe_browsing(
-    #     "https://cloudflare-ipfs.com/ipfs/bafybeicwpbqe27vmhq7cbclsqpi4rf54ao4bovdkspls3y5austjgjdilu/absupdates.html")
-    # wrapper.is_phishing_url_with_google_safe_browsing("https://www.baidu.com/")
-    # wrapper.is_phishing_url_with_google_safe_browsing("https://y5qqkes.duckdns.org")
-    # wrapper.is_phishing_url_with_google_safe_browsing("http://malware.testing.google.test/testing/malware/")
-    text = wrapper.process("/http://www.baidu.com/，，，，fjaldhttp://www.travelswitchfly.com/http://www.travelswitchfly.com/kfjalkdjfkladfhttp://malware.testing.google.test/testing/malware/")
-    print(f"processed text = {text}")
