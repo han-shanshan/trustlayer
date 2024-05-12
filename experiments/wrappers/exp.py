@@ -1,14 +1,10 @@
 from data_operation.data_reader import DataReader
-from experiments.model_loader import ModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL
+from experiments.model_loader import ModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL, LLAMA3_8B_MODEL, \
+    FOX_MODEL
 from experiments.wrappers.exp_data_processing import url_exp_construct_data
 from wrapper.url_detection_wrapper import URLDetectionWrapper
 import time
-
-INFERENCE_PROMPT = "I will provide some text. Please add a warning before the text without modifying the original " \
-                   "content. Do not write any code, but directly return the modified text. Check if the text contains " \
-                   "URLs; if it does, list all URLs included in the text. Then, validate whether these URLs are safe, " \
-                   "i.e., ensure they are not phishing URLs and are reachable. If any URL is not safe, add a warning " \
-                   "before the text and list the unsafe URL. The text is provided below: "
+import sys
 
 
 def write_to_file(file_name, array):
@@ -32,12 +28,13 @@ def wrapper_test():
 
 
 def llm_test(llm_name):
-    pipe = ModelLoader.load_model(llm_name)
+    model_loader = ModelLoader(llm_name)
+    pipe = model_loader.load_model()
     dataset = url_exp_construct_data()
     new_texts = []
     start_time = time.time()
     for text in dataset:
-        new_texts.append(pipe(INFERENCE_PROMPT + text))
+        new_texts.append(pipe(model_loader.get_url_detection_prompt(user_query=text)))
     end_time = time.time()
     print(f"Time taken to execute the code: {end_time - start_time} seconds")
     write_to_file(f"{llm_name}_result-{end_time - start_time}.txt", new_texts)
@@ -45,5 +42,8 @@ def llm_test(llm_name):
 
 
 if __name__ == '__main__':
-    # wrapper_test()
-    llm_test(FALCON40B_MODEL)
+    MODEL_NAME = sys.argv[1]
+    if MODEL_NAME == "wrapper:":
+        wrapper_test()
+    else:
+        llm_test(MODEL_NAME)
