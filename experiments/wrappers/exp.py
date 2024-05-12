@@ -27,7 +27,7 @@ def wrapper_test():
     end_time = time.time()
     print(f"Time taken to execute the code: {end_time - start_time} seconds")
     print(new_texts)
-    write_to_file("wrapper_result.txt", new_texts)
+    write_to_file(f"wrapper_result-{end_time - start_time}.txt", new_texts)
     return new_texts
 
 
