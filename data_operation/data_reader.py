@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 
 def read_data_from_txt_file(file_path, retrieved_col_name=""):
@@ -18,6 +19,16 @@ def read_data_from_txt_file(file_path, retrieved_col_name=""):
 class DataReader:
     def __init__(self):
         pass
+
+    def read_hf_apikey(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, '..', 'utils', 'huggingface.apikey')
+        return self.read_data_file(file_path)
+
+    def read_google_apikey(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, '..', 'utils', 'google.apikey')
+        return self.read_data_file(file_path)
 
     @staticmethod
     def read_data_file(file_path):

@@ -1,8 +1,8 @@
+from data_operation.data_reader import DataReader
+from experiments.model_loader import ModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL
 from experiments.wrappers.exp_data_processing import url_exp_construct_data
 from wrapper.url_detection_wrapper import URLDetectionWrapper
 import time
-from transformers import pipeline
-
 
 INFERENCE_PROMPT = "I will provide some text. Please add a warning before the text without modifying the original " \
                    "content. Do not write any code, but directly return the modified text. Check if the text contains " \
@@ -31,8 +31,8 @@ def wrapper_test():
     return new_texts
 
 
-def llm_test():
-    pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+def llm_test(llm_name):
+    pipe = ModelLoader.load_model(llm_name)
     dataset = url_exp_construct_data()
     new_texts = []
     start_time = time.time()
@@ -40,10 +40,10 @@ def llm_test():
         new_texts.append(pipe(INFERENCE_PROMPT + text))
     end_time = time.time()
     print(f"Time taken to execute the code: {end_time - start_time} seconds")
-    write_to_file("tinyllama_result.txt", new_texts)
+    write_to_file(f"{llm_name}_result-{end_time - start_time}.txt", new_texts)
     return new_texts
 
 
 if __name__ == '__main__':
     # wrapper_test()
-    llm_test()
+    llm_test(TINYLLAMA_MODEL)
