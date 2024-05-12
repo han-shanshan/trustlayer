@@ -125,7 +125,7 @@ def is_phishing_url_with_phishtank(url):  # the API is not working currently
 class URLDetectionWrapper(BaseWrapper):
     def __init__(self, config):
         super().__init__(config)
-        self.api_key = DataReader.read_google_apikey()
+        self.api_key = DataReader().read_google_apikey()
 
     def is_phishing_url_with_google_safe_browsing(self, url):
         # e.g., http://malware.testing.google.test/testing/malware/', http://ianfette.org

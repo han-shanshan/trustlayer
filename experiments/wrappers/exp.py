@@ -45,5 +45,5 @@ def llm_test(llm_name):
 
 
 if __name__ == '__main__':
-    # wrapper_test()
-    llm_test(TINYLLAMA_MODEL)
+    wrapper_test()
+    # llm_test(TINYLLAMA_MODEL)
