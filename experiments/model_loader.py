@@ -2,6 +2,7 @@ from transformers import pipeline
 from data_operation.data_reader import DataReader
 import torch
 from multitask_lora.constants import FOX_BASE_GPU
+from langchain import PromptTemplate
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"
@@ -55,5 +56,7 @@ class ModelLoader:
                            "URL. The text is provided below: "
         if self.model_name in [LLAMA3_8B_MODEL, LLAMA2_7B_MODEL]:
             return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> {user_instruction} {user_query}[/INST] "
+        elif self.model_name in [FALCON40B_MODEL]:
+            return f"You are an intelligent chatbot. Help the following question with brilliant answers. Question: {user_query} Answer: "
         else:
             return user_instruction + user_query
