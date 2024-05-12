@@ -1,5 +1,6 @@
 from transformers import pipeline
 from data_operation.data_reader import DataReader
+import torch
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"
@@ -20,4 +21,6 @@ class ModelLoader:
         if model_name == TINYLLAMA_MODEL:
             return pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0", device=5)
         if model_name == FALCON40B_MODEL:
-            return pipeline("text-generation", model="tiiuae/falcon-40b-instruct", device=6)
+            return pipeline("text-generation", model="tiiuae/falcon-40b-instruct", torch_dtype=torch.bfloat16,
+                            max_new_tokens=1024, device_map="auto")
+
