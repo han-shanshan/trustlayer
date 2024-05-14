@@ -22,9 +22,9 @@ class VectorDBOperator():
     def __init__(self):
         self.encoder = SingletonSentenceTransformer.get_instance()
 
-    def store_data_to_vector_db(self, data_list, idx_name):
+    def store_data_to_vector_db(self, plaintext_index_list, idx_name):
         import faiss
-        vectors = self.generate_vectors(data_list)
+        vectors = self.generate_vectors(plaintext_index_list)
         vector_dimension = vectors.shape[1]
         index = faiss.IndexFlatL2(vector_dimension)
         faiss.normalize_L2(vectors)

@@ -1,10 +1,9 @@
-import pandas as pd
 from transformers import pipeline
 import re
 from data_operation.data_operator import DataOperator
 from data_operation.data_reader import DataReader
 from utils.translator import Translator
-from data_operation.vector_db_operator import VectorDBOperator
+from typing import List, Optional
 
 
 def retrieve_company_name(text, starting_position):
@@ -30,45 +29,47 @@ class HallucinationDataOperator(DataOperator):
     def __init__(self):
         super().__init__()
         self.brand_extractor = pipeline("token-classification", model="dslim/bert-base-NER")
-        self.title_generation_pipe = pipeline("text2text-generation", model="czearing/article-title-generator")
-        self.vector_db_operator = VectorDBOperator()
-        self.index_name = ""
 
-    def create_knowledge_db(self, idx_path, data_file_path="data/hallucination_cases.xlsx"):
-        raw_knowledge_data = DataReader.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
-        print(f"len(knowledge) = {len(raw_knowledge_data)}")
-        idxs, plaintext_knowledge = self.process_knowledge(raw_knowledge_data, split="---------")
-        print(f"sample of processed record: idxs[0] = {idxs[0]}")
-        print(f"sample of processed record: plaintext_knowledge[0] = {plaintext_knowledge[0]}")
-        self.index_name = idx_path
-        self.vector_db_operator.store_data_to_vector_db(idxs, idx_name=idx_path)
-        df = pd.DataFrame(plaintext_knowledge)
-        df.to_csv('plaintext_knowledge_data.csv', index=False)
+    def _load_knowledge_dataset(self, dataset_name=None):
+        data_file_path = "data/hallucination_cases.xlsx"
+        return DataReader.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
 
-    def search_in_vector_db(self, text, plaintext_file_path, k=10, index=None):
-        if index is None:
-            index = self.index_name
-        results = self.vector_db_operator.search_vectors(text, index, k)
-        df = DataReader.read_data_from_file(plaintext_file_path)
+    def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
+                            supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+        super().create_knowledge_db(dataset_id="hallucination_knowledge", store_path=store_path)
 
-        # join by: df1.ann == data.index
-        results = pd.merge(results, df, left_on='ann', right_index=True)
-        print(f"retrieved knowledge: \n{results}")
-        # results.to_csv('knowledge_data.csv', index=False)
-        return results
+    def search_in_vector_db_with_index(self, text, plaintext_file_path, k=10, index=None):
+        return super().search_in_vector_db_with_index(text, plaintext_file_path, k=k, index=index)
 
-    def _extract_idx_for_a_qa(self, qa, brand, existing_knowledge=None):
-        q_and_a = qa.strip().split("Answer:")
+    def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None, supplementary_info_co = None, is_qa=True, qa_sep=None):
+        split = "---------"
+        knowledge_dict = {}
+        for data in knowledge_dataset:
+            brand = self.extract_brand_name(data)  # No brand: No-Brand
+            qa_pairs = data.split(split)
+            qa_pairs = [item.strip() for item in qa_pairs if item.strip()]
+            for qa in qa_pairs:
+                existing_knowledge = None
+                if qa in knowledge_dict:
+                    existing_knowledge = knowledge_dict[qa]
+                idx = self._extract_idx_for_a_qa_for_customer_knowledge(qa, brand, existing_knowledge=existing_knowledge)
+                if idx is not None:
+                    knowledge_dict[qa] = idx
+                print(f"idx = {idx}")
+        return [idx for _, idx in knowledge_dict.items()], ["[" + idx + "] " + data for data, idx in
+                                                            knowledge_dict.items()], []
+
+    def _extract_idx_for_a_qa_for_customer_knowledge(self, qa, brand, existing_knowledge=None, qa_identifiers=None):
+        if qa_identifiers is None:
+            qa_identifiers = {"Q": "Answer:", "A": "Question:"}
+        q_and_a = qa.strip().split(qa_identifiers["A"])
         if len(q_and_a) <= 1:
             return None
-        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace("Question:", "").strip())
+        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace(qa_identifiers["Q"], "").strip())
         _, english_a = Translator().get_instance().language_unification(q_and_a[1].strip())
-        # print(f"english_q = {english_q}, english_a = {english_a}")
         res = self.title_generation_pipe([english_q, english_a])
-        # print(f"res = {res}")
         q_keyword = res[0]['generated_text'].strip()
         a_keyword = res[1]['generated_text'].strip()
-        # print(f"q = {q_keyword} + a = {a_keyword}")
         if existing_knowledge is None:
             return brand + ":" + q_keyword + "|" + a_keyword
         else:  # try to choose a more comprehensive idx between the 2
@@ -83,23 +84,6 @@ class HallucinationDataOperator(DataOperator):
                 else:
                     return existing_knowledge.split(":")[0].strip() + ":" + q_keyword + "|" + a_keyword
 
-    def process_knowledge(self, raw_knowledge_data, split="---------"):
-        knowledge_dict = {}
-        for data in raw_knowledge_data:
-            brand = self.extract_brand_name(data)  # No brand: No-Brand
-            qa_pairs = data.split(split)
-            qa_pairs = [item.strip() for item in qa_pairs if item.strip()]
-            for qa in qa_pairs:
-                existing_knowledge = None
-                if qa in knowledge_dict:
-                    existing_knowledge = knowledge_dict[qa]
-                idx = self._extract_idx_for_a_qa(qa, brand, existing_knowledge)
-                if idx is not None:
-                    knowledge_dict[qa] = idx
-                print(f"idx = {idx}")
-        return [idx for _, idx in knowledge_dict.items()], ["[" + idx + "] " + data for data, idx in
-                                                            knowledge_dict.items()]
-
     def extract_brand_name(self, data):
         _, english_data = Translator().get_instance().language_unification(data)
         org_detection_res = self.brand_extractor(english_data)
@@ -112,5 +96,5 @@ class HallucinationDataOperator(DataOperator):
 
 # if __name__ == '__main__':
 #     p = HallucinationDataOperator()
-#     p.create_knowledge_db(idx_path="../idx.bin", data_file_path="../data/hallucination_cases.xlsx")
+#     p.create_knowledge_db(store_path="../idx.bin", data_file_path="../data/hallucination_cases.xlsx")
 #     p.search_in_vector_db("How to Charge the Camera", k=10, index="idx.bin")

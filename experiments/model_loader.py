@@ -2,7 +2,6 @@ from transformers import pipeline
 from data_operation.data_reader import DataReader
 import torch
 from multitask_lora.constants import FOX_BASE_GPU
-from langchain import PromptTemplate
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"
@@ -48,6 +47,12 @@ class ModelLoader:
                             return_full_text=False, max_new_tokens=1024, device=7)
 
     def get_url_detection_prompt(self, user_query):
+        """
+        reference for llama prompt: https://huggingface.co/blog/llama2#how-to-prompt-llama-2
+        reference for falcon prompt: https://medium.com/@abirkhan4u/falcon-7b-instruct-llm-with-langchain-empowering-language-processing-like-never-before-b8abb0498bf
+        """
+
+
         user_instruction = "I will provide some text. Please add a warning before the text without modifying the " \
                            "original content. Do not write any code, but directly return the modified text. Check " \
                            "if the text contains URLs; if it does, list all URLs included in the text. Then, " \
