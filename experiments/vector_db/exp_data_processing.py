@@ -3,6 +3,7 @@ import random
 from typing import List, Optional
 
 from data_operation.data_operator import DataOperator
+from data_operation.data_reader import DataReader
 
 RANDOM_SEED = 0
 
@@ -18,6 +19,9 @@ class VectorDBExpDataOperator(DataOperator):
     def __init__(self):
         super().__init__()
         self.dataset_id = ""
+
+    def set_dataset_id(self, dataset_id):
+        self.dataset_id = dataset_id
 
     def get_columns_to_keep(self):
         columns_to_keep = []
@@ -68,27 +72,54 @@ class VectorDBExpDataOperator(DataOperator):
                                                                                              knowledge_col=knowledge_col,
                                                                                              supplementary_info_col=supplementary_info_col,
                                                                                              is_qa=is_qa, qa_sep=qa_sep)
-        self.vector_db_operator.store_data_to_vector_db(plaintext_idxs,
+        self.vector_db_operator.store_data_to_vector_db(plaintext_knowledge,
                                                         idx_name=f"full_{self.dataset_id.split('/')[-1]}_idx.bin")
         return plaintext_idxs, plaintext_knowledge, supplementary_info
 
 
-DATASETS = ["qgyd2021/e_commerce_customer_service", "ruslanmv/ai-medical-chatbot", "argilla/news-summary",
-            "antareepdey/Patient_doctor_chat", "avaliev/chat_doctor"]
-
-
-def test(dataset_id, total_query_num=50):
+def index_text(dataset_id, total_query_num=50):
     operator = VectorDBExpDataOperator()
-    operator.create_knowledge_db(dataset_id=dataset_id)
+    operator.set_dataset_id(dataset_id)
     dataset_name = dataset_id.split('/')[-1]
     idx_name = dataset_name + "_idx.bin"
-    full_idx_name = "full_" + dataset_name + "_idx.bin"
+    # full_idx_name = "full_" + dataset_name + "_idx.bin"
     plaintext_knowledge_file_name = dataset_name + "_knowledge_data.csv"
     question_file_name = f"{dataset_name}_supplementary_data.csv"
-    # todo find questions from supplementary infor file;
-    for i in range(total_query_num):
-        operator.search_in_vector_db_with_index(query, plaintext_knowledge_file_name, k=10, index=idx_name)
 
+    df = DataReader.read_data_from_file(question_file_name)
+    col_name = df.columns[0]
+    queries = df.sample(n=total_query_num, random_state=RANDOM_SEED)
+    # print(f"queries = {queries}")
+    query_index_ids = queries.index.to_list()
+    # print(f"query_index_ids = {query_index_ids}")
+
+    top3_call_back_counter = 0
+    top5_call_back_counter = 0
+    top10_call_back_counter = 0
+    for i in range(total_query_num):
+        query = queries.iloc[i][col_name]
+        # print(f"query = {query}")
+        result_df = operator.search_in_vector_db_with_index(query, plaintext_knowledge_file_name, k=10, index=idx_name)
+        ann = result_df["ann"].tolist()
+        # print(f"ann = {ann}")
+        if query_index_ids[i] in ann:
+            top10_call_back_counter += 1
+        if query_index_ids[i] in ann[:5]:
+            top5_call_back_counter += 1
+        if query_index_ids[i] in ann[:3]:
+            top3_call_back_counter += 1
+        # print(f"retrieved knowledge: \n{result_df}")
+    print(f"total_query_num = {total_query_num}")
+    print(f"call back top3: call back queries: {top3_call_back_counter}, {top3_call_back_counter / total_query_num}")
+    print(f"call back top5: call back queries: {top5_call_back_counter},{top5_call_back_counter / total_query_num}")
+    print(f"call back top10: call back queries: {top10_call_back_counter}, {top10_call_back_counter / total_query_num}")
+
+
+E_COMMERCE_DATASET = "qgyd2021/e_commerce_customer_service"
+AI_MEDICAL_CHAT_DATASET = "ruslanmv/ai-medical-chatbot"
+NEWS_SUMMARY_DATASET = "argilla/news-summary"
+PATIENT_DOCTOR_CHAT_DATASET = "antareepdey/Patient_doctor_chat"
+CHAT_DOCTRO_DATASET = "avaliev/chat_doctor"
 
 if __name__ == '__main__':
     """
@@ -100,5 +131,5 @@ if __name__ == '__main__':
     """
 
     operator = VectorDBExpDataOperator()
-    operator.create_knowledge_db(dataset_id="qgyd2021/e_commerce_customer_service")
-
+    operator.create_knowledge_db(dataset_id=E_COMMERCE_DATASET)
+    # index_text(E_COMMERCE_DATASET, total_query_num=50)

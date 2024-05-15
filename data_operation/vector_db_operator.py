@@ -42,6 +42,4 @@ class VectorDBOperator():
         faiss.normalize_L2(_vector)
         index = faiss.read_index(idx_name)
         distances, ann = index.search(_vector, k=k)  # search for all nearest neighbours
-        print(f"distance = {distances}")
-        print(f"ann = {ann}")
         return pd.DataFrame({'distances': distances[0], 'ann': ann[0]})

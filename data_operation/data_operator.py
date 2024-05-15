@@ -103,9 +103,9 @@ class DataOperator:
         if len(knowledge_col) == 1 and is_qa:  # only 1 column is useful; may need to split data
             for data in knowledge_dataset:
                 qa = data[knowledge_col[0]]
-                plaintext_index_list.append(self._extract_idx_for_a_qa(qa))
+                plaintext_index_list.append(self._extract_q_idx_for_a_qa(qa))
                 knowledge_list.append(data[knowledge_col[0]].replace(qa_sep["Q"], "").replace(qa_sep["A"], ""))
-        if not is_qa or (is_qa and len(knowledge_col) > 2):
+        if not is_qa:  # or (is_qa and len(knowledge_col) > 2):
             # if is a qa dataset but more than 2 columns are kept, merge all the selected columns to generate indexes
             for data in knowledge_dataset:
                 knowledge_entry = ""
@@ -116,8 +116,9 @@ class DataOperator:
         elif is_qa and len(knowledge_col) == 2:
             for data in knowledge_dataset:
                 knowledge_entry = data[knowledge_col[0]].strip() + " | " + data[knowledge_col[1].strip()]
-                qa_summarizations = self._generate_summarization_for_a_list([data[knowledge_col[0]].strip(), data[knowledge_col[1].strip()]])
+                # qa_summarizations = self._generate_summarization_for_a_list([data[knowledge_col[0]].strip(), data[knowledge_col[1].strip()]])
                 # plaintext_index_list.append(qa_summarizations[0] + "|" + qa_summarizations[1]) todo
+                qa_summarizations = self._generate_summarization_for_a_list([data[knowledge_col[0]].strip()])
                 plaintext_index_list.append(qa_summarizations[0])
                 knowledge_list.append(knowledge_entry)
         else:
@@ -128,7 +129,7 @@ class DataOperator:
 
         return plaintext_index_list, knowledge_list, supplementary_info_list
 
-    def _extract_idx_for_a_qa(self, qa, qa_identifiers=None):
+    def _get_separate_q_and_a_summarizations(self, qa, qa_identifiers=None):
         if qa_identifiers is None:
             qa_identifiers = {"Q": "Answer:", "A": "Question:"}
         q_and_a = qa.strip().split(qa_identifiers["A"])
@@ -136,8 +137,14 @@ class DataOperator:
             return None
         question = q_and_a[0].replace(qa_identifiers["Q"], "")
         answer = q_and_a[1].strip()
-        q_a_summarizations = self._generate_summarization_for_a_list([question, answer])
-        return q_a_summarizations[0] # + "|" + q_a_summarizations[1] # todo
+        return self._generate_summarization_for_a_list([question, answer])
+
+    def _extract_q_idx_for_a_qa(self, qa, qa_identifiers=None):
+        return self._get_separate_q_and_a_summarizations(qa, qa_identifiers=qa_identifiers)[0]
+
+    def _extract_qa_idx_for_a_qa(self, qa, qa_identifiers=None):
+        q_a_summarizations = self._get_separate_q_and_a_summarizations(qa, qa_identifiers=qa_identifiers)[0]
+        return q_a_summarizations[0] + "|" + q_a_summarizations[1]
 
     def set_dataset_name(self, dataset_name):
         self.dataset_name = dataset_name
@@ -152,13 +159,8 @@ class DataOperator:
             raise Exception(f"index is {index}")
         results = self.vector_db_operator.search_vectors(text, index, k)
         df = DataReader.read_data_from_file(plaintext_file_path)
-        print(f"df.shape[0] = {df.shape[0]}")
-        print(f"reults = {results}")
-
         # join by: df1.ann == data.index
         results = pd.merge(results, df, left_on='ann', right_index=True)
-        print(f"retrieved knowledge: \n{results}")
-        # results.to_csv('knowledge_data.csv', index=False)
         return results
 
 # if __name__ == '__main__':
