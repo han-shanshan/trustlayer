@@ -1,7 +1,6 @@
 from datasets import load_dataset, concatenate_datasets
 import random
 from typing import List, Optional
-
 from data_operation.data_operator import DataOperator
 from data_operation.data_reader import DataReader
 from transformers import pipeline
@@ -29,11 +28,14 @@ class VectorDBExpDataOperator(DataOperator):
         self.rephrase_pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
     def rephrase(self, entry: str):
-        # return self._generate_summarization_for_an_entry(entry)
-        text = self.rephrase_pipe(entry)[0]['generated_text']
-        if len(text) > 3 * len(entry) and '. ' in text:
-            text = text.split(". ")[0].strip()
-        return text
+        if self.dataset_id in [E_COMMERCE_DATASET]:
+            # the question in the dataset is short; need longer questions, so use tinyllama
+            text = self.rephrase_pipe(entry)[0]['generated_text']
+            if len(text) > 3 * len(entry) and '. ' in text:
+                text = text.split(". ")[0].strip()
+            return text
+        if self.dataset_id in [CHAT_DOCTRO_DATASET]:
+            return self._generate_summarization_for_an_entry(entry)
 
     def set_dataset_id(self, dataset_id):
         self.dataset_id = dataset_id
@@ -193,4 +195,4 @@ if __name__ == '__main__':
     https://huggingface.co/datasets/avaliev/chat_doctor?row=0
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
-    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num = 50)
+    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
