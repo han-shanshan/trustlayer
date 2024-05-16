@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import os
 
 
 def write_a_list_to_file(file_name, array: list):
@@ -20,6 +21,9 @@ def load_a_dictionary_from_file(file_name):
 
 
 def write_a_list_to_csv_with_panda(data, file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     if type(data) is list:
         df = pd.DataFrame(data)
         df.to_csv(file_path, index=False)

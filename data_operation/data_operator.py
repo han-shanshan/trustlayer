@@ -125,7 +125,7 @@ class DataOperator:
                 index_method = self._extract_qa_idx_for_a_qa_string
             for data in knowledge_dataset:
                 qa = data[knowledge_col[0]]
-                plaintext_index_list.append(index_method(qa))
+                plaintext_index_list.append(index_method(qa, qa_identifiers=qa_sep))
                 knowledge_list.append(data[knowledge_col[0]].replace(qa_sep["Q"], "").replace(qa_sep["A"], ""))
         elif len(knowledge_col) == 2:
             index_method = None

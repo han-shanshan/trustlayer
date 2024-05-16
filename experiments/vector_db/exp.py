@@ -23,11 +23,9 @@ def remove_newlines(data_entry):
     return data_entry
 
 
-def get_q_in_qa_pair(data_entries):
-    for key, value in data_entries.items():
-        if isinstance(value, str):  # Check if the field is a string
-            data_entries[key] = value.split("###Output:")[0].replace("###Input:", "")
-    return data_entries
+def get_q_in_qa_pair(data_entry):
+    data_entry["Text"] = data_entry["Text"].replace("Input:", "")
+    return data_entry
 
 
 class VectorDBExpDataOperator(DataOperator):
@@ -82,14 +80,15 @@ class VectorDBExpDataOperator(DataOperator):
                             indexing_q=True, indexing_a=False, qa_sep: dict = None): # todo: remove suplementary info
         self.dataset_id = dataset_id
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
-            qa_sep = {"Q": "###Input:", "A": "###Onput:"}
-
+            qa_sep = {"Q": "###Input:", "A": "###Output:"}
             supplementary_info_col = "Text"
             dataset_name = dataset_id.split("/")[-1]
             storage_prefix = dataset_name
             if store_path != "":
                 storage_prefix = store_path + "/" + dataset_name
-            supplementary_info_list = self._load_knowledge_dataset(self.dataset_id).select(["Text"]).map(get_q_in_qa_pair)
+            data = self._load_knowledge_dataset(self.dataset_id)
+            supplementary_info_list = data.remove_columns([col for col in data.column_names if col != "Text"]).map(
+                get_q_in_qa_pair)
             write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
 
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
@@ -256,4 +255,4 @@ if __name__ == '__main__':
     # exp_indexing_q_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
     # exp_indexing_q_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
     # exp_indexing_whole_message_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
-    exp_indexing_whole_message_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
+    # exp_indexing_whole_message_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
