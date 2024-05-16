@@ -95,8 +95,6 @@ class VectorDBExpDataOperator(DataOperator):
                                                                                              indexing_q=indexing_q,
                                                                                              indexing_a=indexing_a,
                                                                                              qa_sep=qa_sep)
-        # self.vector_db_operator.store_data_to_vector_db(plaintext_knowledge,
-        #                                                 idx_name=f"full_{self.dataset_id.split('/')[-1]}_idx.bin")
         return plaintext_idxs, plaintext_knowledge, supplementary_info
 
 
@@ -153,36 +151,36 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     print(f"call back top10: call back queries: {top10_call_back_counter}, {top10_call_back_counter / total_query_num}")
 
 
-def exp_indexing_whole_message_original_queries(dataset_id):
+def exp_indexing_whole_message_original_queries(dataset_id, total_query_num):
     store_path = "exp_indexing_whole_message_original_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=True)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=False)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=False)
 
 
-def exp_indexing_whole_message_rephrased_queries(dataset_id):
+def exp_indexing_whole_message_rephrased_queries(dataset_id, total_query_num):
     store_path = "exp_indexing_whole_message_rephrased_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=True)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=True)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=True)
 
 
-def exp_indexing_q_original_queries(dataset_id):
+def exp_indexing_q_original_queries(dataset_id, total_query_num):
     store_path = "exp_indexing_q_original_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=False)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=False)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=False)
 
 
-def exp_indexing_q_rephrased_queries(dataset_id):
+def exp_indexing_q_rephrased_queries(dataset_id, total_query_num):
     store_path = "exp_indexing_q_rephrased_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=False)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=True)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=True)
 
 
 if __name__ == '__main__':
