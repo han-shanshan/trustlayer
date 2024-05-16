@@ -35,13 +35,16 @@ class HallucinationDataOperator(DataOperator):
         return DataReader.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
-                            supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+                            supplementary_info_col: str = None, indexing_whole_knowledge=False,
+                            indexing_q=True, indexing_a=False, qa_sep: dict = None):
         super().create_knowledge_db(dataset_id="hallucination_knowledge", store_path=store_path)
 
     def search_in_vector_db_with_index(self, text, plaintext_file_path, k=10, index=None):
         return super().search_in_vector_db_with_index(text, plaintext_file_path, k=k, index=index)
 
-    def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None, supplementary_info_co = None, is_qa=True, qa_sep=None):
+    def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None,
+                           supplementary_info_co=None,
+                           indexing_whole_knowledge=False, indexing_q=True, indexing_a=False, qa_sep: dict = None):
         split = "---------"
         knowledge_dict = {}
         for data in knowledge_dataset:
@@ -52,7 +55,8 @@ class HallucinationDataOperator(DataOperator):
                 existing_knowledge = None
                 if qa in knowledge_dict:
                     existing_knowledge = knowledge_dict[qa]
-                idx = self._extract_idx_for_a_qa_for_customer_knowledge(qa, brand, existing_knowledge=existing_knowledge)
+                idx = self._extract_idx_for_a_qa_for_customer_knowledge(qa, brand,
+                                                                        existing_knowledge=existing_knowledge)
                 if idx is not None:
                     knowledge_dict[qa] = idx
                 print(f"idx = {idx}")
@@ -65,7 +69,8 @@ class HallucinationDataOperator(DataOperator):
         q_and_a = qa.strip().split(qa_identifiers["A"])
         if len(q_and_a) <= 1:
             return None
-        _, english_q = Translator().get_instance().language_unification(q_and_a[0].replace(qa_identifiers["Q"], "").strip())
+        _, english_q = Translator().get_instance().language_unification(
+            q_and_a[0].replace(qa_identifiers["Q"], "").strip())
         _, english_a = Translator().get_instance().language_unification(q_and_a[1].strip())
         res = self.title_generation_pipe([english_q, english_a])
         q_keyword = res[0]['generated_text'].strip()

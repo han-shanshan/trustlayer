@@ -38,9 +38,12 @@ class DataOperator:
     def _generate_summarization_for_an_entry(self, entry: str):
         return self.title_generation_pipe(entry)[0]['generated_text'].strip()
 
-    def _generate_summarization_for_a_list(self, entry_list: list):
-        res_list = self.title_generation_pipe(entry_list)
-        return [res_list[i]['generated_text'].strip() for i in range(len(res_list))]
+    # def _generate_summarizations_for_a_list(self, entry_list: list):
+    #     res_list = self.title_generation_pipe(entry_list)
+    #     return [res_list[i]['generated_text'].strip() for i in range(len(res_list))]
+
+    def _generate_summarizations_for_a_list(self, entry_list: list):
+        return entry_list
 
     def _load_knowledge_dataset(self, dataset_name):
         """
@@ -61,14 +64,17 @@ class DataOperator:
         return dataset
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
-                            supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+                            supplementary_info_col: str = None, indexing_whole_knowledge=False,
+                            indexing_q=True, indexing_a=False, qa_sep=None):
         raw_knowledge_data = self._load_knowledge_dataset(dataset_id)
         print(f"knowledge_dataset={raw_knowledge_data}, "
               f"knowledge_col={knowledge_col}, "
-              f"supplementary_info_col={supplementary_info_col}, is_qa={is_qa}, qa_sep={qa_sep}")
+              f"supplementary_info_col={supplementary_info_col}, indexing_whole_knowledge={indexing_whole_knowledge}, "
+              f"indexing_q = {indexing_q}, indexing_a = {indexing_a}, qa_sep={qa_sep}")
         plaintext_idxs, plaintext_knowledge, supplementary_info = self._process_knowledge(
             knowledge_dataset=raw_knowledge_data, knowledge_col=knowledge_col,
-            supplementary_info_col=supplementary_info_col, is_qa=is_qa, qa_sep=qa_sep)
+            supplementary_info_col=supplementary_info_col, indexing_whole_knowledge=indexing_whole_knowledge,
+            indexing_q=indexing_q, indexing_a=indexing_a, qa_sep=qa_sep)
 
         print(f"plaintext_idxs[0] = {plaintext_idxs[0]}")
         print(f"sample of processed record: plaintext_knowledge[0] = {plaintext_knowledge[0]}")
@@ -85,7 +91,6 @@ class DataOperator:
             write_a_list_to_csv_with_panda(supplementary_info, meta_info['supplementary_storage_path'])
         write_a_dictionary_to_file(file_name=dataset_name, dictionary=meta_info)
 
-
     """
     knowledge_dataset: loaded dataset
     knowledge_col: Optional[List[str]] = None: informative columns in the dataset that will be used as knowledge 
@@ -93,33 +98,46 @@ class DataOperator:
     qa_sep=None: separators for QA entries. Usually, a qa entry is in this format: "Question: xxx. Answer: xxx"
     """
     def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None,
-                           supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+                           supplementary_info_col: str = None, indexing_whole_knowledge=False,
+                           indexing_q=True, indexing_a=False, qa_sep: dict = None):
         if knowledge_col is None:
             knowledge_col = knowledge_dataset.column_names
         knowledge_list = []
         plaintext_index_list = []
         supplementary_info_list = []
 
-        if len(knowledge_col) == 1 and is_qa:  # only 1 column is useful; may need to split data
-            for data in knowledge_dataset:
-                qa = data[knowledge_col[0]]
-                plaintext_index_list.append(self._extract_q_idx_for_a_qa(qa))
-                knowledge_list.append(data[knowledge_col[0]].replace(qa_sep["Q"], "").replace(qa_sep["A"], ""))
-        if not is_qa:  # or (is_qa and len(knowledge_col) > 2):
-            # if is a qa dataset but more than 2 columns are kept, merge all the selected columns to generate indexes
+        if indexing_whole_knowledge:  # merge all columns to create one value
             for data in knowledge_dataset:
                 knowledge_entry = ""
                 for col in knowledge_col:
-                    knowledge_entry = knowledge_entry + " " + data[col]
-                plaintext_index_list.append(self._generate_summarization_for_an_entry(knowledge_entry))
+                    knowledge_entry = knowledge_entry + "|" + data[col]
+                # plaintext_index_list.append(self._generate_summarization_for_an_entry(knowledge_entry))
+                plaintext_index_list.append(knowledge_entry)
                 knowledge_list.append(knowledge_entry)
-        elif is_qa and len(knowledge_col) == 2:
+        elif len(knowledge_col) == 1:  # may need to split data
+            index_method = None
+            if indexing_q and not indexing_a:
+                index_method = self._extract_q_idx_for_a_qa_string
+            elif indexing_a and not indexing_q:
+                index_method = self._extract_a_idx_for_a_qa_string
+            elif indexing_q and indexing_a:
+                index_method = self._extract_qa_idx_for_a_qa_string
+            for data in knowledge_dataset:
+                qa = data[knowledge_col[0]]
+                plaintext_index_list.append(index_method(qa))
+                knowledge_list.append(data[knowledge_col[0]].replace(qa_sep["Q"], "").replace(qa_sep["A"], ""))
+        elif len(knowledge_col) == 2:
+            index_method = None
+            if indexing_q and not indexing_a:
+                index_method = self._extract_q_idx_for_a_list
+            elif indexing_a and not indexing_q:
+                index_method = self._extract_a_idx_for_a_list
+            elif indexing_q and indexing_a:
+                index_method = self._extract_combined_idx_for_a_list
             for data in knowledge_dataset:
                 knowledge_entry = data[knowledge_col[0]].strip() + " | " + data[knowledge_col[1].strip()]
-                # qa_summarizations = self._generate_summarization_for_a_list([data[knowledge_col[0]].strip(), data[knowledge_col[1].strip()]])
-                # plaintext_index_list.append(qa_summarizations[0] + "|" + qa_summarizations[1]) todo
-                qa_summarizations = self._generate_summarization_for_a_list([data[knowledge_col[0]].strip()])
-                plaintext_index_list.append(qa_summarizations[0])
+                plaintext_index_list.append(
+                    index_method([data[knowledge_col[0]].strip(), data[knowledge_col[1].strip()]]))
                 knowledge_list.append(knowledge_entry)
         else:
             raise Exception("Error")
@@ -129,6 +147,7 @@ class DataOperator:
 
         return plaintext_index_list, knowledge_list, supplementary_info_list
 
+    ############### when inputs are qa strings #####################
     def _get_separate_q_and_a_summarizations(self, qa, qa_identifiers=None):
         if qa_identifiers is None:
             qa_identifiers = {"Q": "Answer:", "A": "Question:"}
@@ -137,14 +156,35 @@ class DataOperator:
             return None
         question = q_and_a[0].replace(qa_identifiers["Q"], "")
         answer = q_and_a[1].strip()
-        return self._generate_summarization_for_a_list([question, answer])
+        return self._generate_summarizations_for_a_list([question, answer])
 
-    def _extract_q_idx_for_a_qa(self, qa, qa_identifiers=None):
+    def _extract_q_idx_for_a_qa_string(self, qa, qa_identifiers=None):
         return self._get_separate_q_and_a_summarizations(qa, qa_identifiers=qa_identifiers)[0]
 
-    def _extract_qa_idx_for_a_qa(self, qa, qa_identifiers=None):
+    def _extract_a_idx_for_a_qa_string(self, qa, qa_identifiers=None):
+        return self._get_separate_q_and_a_summarizations(qa, qa_identifiers=qa_identifiers)[1]
+
+    def _extract_qa_idx_for_a_qa_string(self, qa, qa_identifiers=None):
         q_a_summarizations = self._get_separate_q_and_a_summarizations(qa, qa_identifiers=qa_identifiers)[0]
         return q_a_summarizations[0] + "|" + q_a_summarizations[1]
+
+    ####################################################################
+
+    ##################when inputs are separate Q and A ############################
+    def _extract_q_idx_for_a_list(self, entries: list):
+        return self._generate_summarizations_for_a_list(entries)[0]
+
+    def _extract_a_idx_for_a_list(self, entries: list):
+        return self._generate_summarizations_for_a_list(entries)[1]
+
+    def _extract_combined_idx_for_a_list(self, entries: list):
+        summarizations = self._generate_summarizations_for_a_list(entries)
+        res = ""
+        for i in range(len(summarizations) - 1):
+            res = res + summarizations[i] + "|"
+        return res + summarizations[-1]
+
+    ##############################################################################
 
     def set_dataset_name(self, dataset_name):
         self.dataset_name = dataset_name

@@ -4,8 +4,15 @@ from typing import List, Optional
 
 from data_operation.data_operator import DataOperator
 from data_operation.data_reader import DataReader
+from transformers import pipeline
 
 RANDOM_SEED = 0
+
+E_COMMERCE_DATASET = "qgyd2021/e_commerce_customer_service"
+AI_MEDICAL_CHAT_DATASET = "ruslanmv/ai-medical-chatbot"
+NEWS_SUMMARY_DATASET = "argilla/news-summary"
+PATIENT_DOCTOR_CHAT_DATASET = "antareepdey/Patient_doctor_chat"
+CHAT_DOCTRO_DATASET = "avaliev/chat_doctor"
 
 
 def remove_newlines(data_entry):
@@ -19,22 +26,30 @@ class VectorDBExpDataOperator(DataOperator):
     def __init__(self):
         super().__init__()
         self.dataset_id = ""
+        self.rephrase_pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+
+    def rephrase(self, entry: str):
+        # return self._generate_summarization_for_an_entry(entry)
+        text = self.rephrase_pipe(entry)[0]['generated_text']
+        if len(text) > 3 * len(entry) and '. ' in text:
+            text = text.split(". ")[0].strip()
+        return text
 
     def set_dataset_id(self, dataset_id):
         self.dataset_id = dataset_id
 
     def get_columns_to_keep(self):
         columns_to_keep = []
-        if self.dataset_id == "qgyd2021/e_commerce_customer_service":
+        if self.dataset_id == E_COMMERCE_DATASET:
             columns_to_keep = ["question", "answer"]
         else:
-            if self.dataset_id == "argilla/news-summary":  # 21K
+            if self.dataset_id == NEWS_SUMMARY_DATASET:  # 21K
                 columns_to_keep = ["text"]
-            elif self.dataset_id == "antareepdey/Patient_doctor_chat":  # 379K
+            elif self.dataset_id == PATIENT_DOCTOR_CHAT_DATASET:  # 379K
                 columns_to_keep = ["Text"]
-            elif self.dataset_id == "ruslanmv/ai-medical-chatbot":
+            elif self.dataset_id == AI_MEDICAL_CHAT_DATASET:
                 columns_to_keep = ["Patient", "Doctor"]
-            elif self.dataset_id == "avaliev/chat_doctor":
+            elif self.dataset_id == CHAT_DOCTRO_DATASET:
                 columns_to_keep = ["input", "output"]
         return columns_to_keep
 
@@ -51,7 +66,8 @@ class VectorDBExpDataOperator(DataOperator):
         return dataset.map(remove_newlines)
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
-                            supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+                            supplementary_info_col: str = None, indexing_whole_knowledge=False,
+                            indexing_q=True, indexing_a=False, qa_sep: dict = None):
         self.dataset_id = dataset_id
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
             qa_sep = {"Q": "###Input:", "A": "###Onput:"}
@@ -59,25 +75,32 @@ class VectorDBExpDataOperator(DataOperator):
             supplementary_info_col = "Description"
         if self.dataset_id == "argilla/news-summary":
             supplementary_info_col = "prediction"
+            indexing_whole_knowledge = True
         if self.dataset_id == "qgyd2021/e_commerce_customer_service":
             supplementary_info_col = "question"
+
         super().create_knowledge_db(dataset_id=self.dataset_id, store_path=store_path,
                                     knowledge_col=self.get_columns_to_keep(),
-                                    supplementary_info_col=supplementary_info_col, is_qa=self.get_is_qa(),
-                                    qa_sep=qa_sep)
+                                    supplementary_info_col=supplementary_info_col,
+                                    indexing_whole_knowledge=indexing_whole_knowledge,
+                                    indexing_q=indexing_q, indexing_a=indexing_a, qa_sep=qa_sep)
 
     def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None,
-                           supplementary_info_col: str = None, is_qa=True, qa_sep=None):
+                           supplementary_info_col: str = None, indexing_whole_knowledge=False,
+                           indexing_q=True, indexing_a=False, qa_sep: dict = None):
         plaintext_idxs, plaintext_knowledge, supplementary_info = super()._process_knowledge(knowledge_dataset,
                                                                                              knowledge_col=knowledge_col,
                                                                                              supplementary_info_col=supplementary_info_col,
-                                                                                             is_qa=is_qa, qa_sep=qa_sep)
-        self.vector_db_operator.store_data_to_vector_db(plaintext_knowledge,
-                                                        idx_name=f"full_{self.dataset_id.split('/')[-1]}_idx.bin")
+                                                                                             indexing_whole_knowledge=indexing_whole_knowledge,
+                                                                                             indexing_q=indexing_q,
+                                                                                             indexing_a=indexing_a,
+                                                                                             qa_sep=qa_sep)
+        # self.vector_db_operator.store_data_to_vector_db(plaintext_knowledge,
+        #                                                 idx_name=f"full_{self.dataset_id.split('/')[-1]}_idx.bin")
         return plaintext_idxs, plaintext_knowledge, supplementary_info
 
 
-def index_text(dataset_id, total_query_num=50):
+def exp_searching(dataset_id, total_query_num=50, is_rephrasing_query=True):
     operator = VectorDBExpDataOperator()
     operator.set_dataset_id(dataset_id)
     dataset_name = dataset_id.split('/')[-1]
@@ -88,38 +111,72 @@ def index_text(dataset_id, total_query_num=50):
 
     df = DataReader.read_data_from_file(question_file_name)
     col_name = df.columns[0]
-    queries = df.sample(n=total_query_num, random_state=RANDOM_SEED)
+    original_queries = df.sample(n=total_query_num, random_state=RANDOM_SEED)
     # print(f"queries = {queries}")
-    query_index_ids = queries.index.to_list()
+    query_index_ids = original_queries.index.to_list()
     # print(f"query_index_ids = {query_index_ids}")
-
+    top1_call_back_counter = 0
     top3_call_back_counter = 0
     top5_call_back_counter = 0
     top10_call_back_counter = 0
+
+    queries = []
+    if is_rephrasing_query:
+        for i in range(total_query_num):
+            old_query = original_queries.iloc[i][col_name]
+            query = operator.rephrase(old_query)
+            print(f"old query = {old_query}, new query = {query}")
+            queries.append(query)
+    else:
+        queries = [original_queries.iloc[i][col_name] for i in range(len(original_queries))]
+
     for i in range(total_query_num):
-        query = queries.iloc[i][col_name]
-        # print(f"query = {query}")
-        result_df = operator.search_in_vector_db_with_index(query, plaintext_knowledge_file_name, k=10, index=idx_name)
+        print(f"queries[i] = {queries[i]}")
+        result_df = operator.search_in_vector_db_with_index(queries[i], plaintext_knowledge_file_name, k=10,
+                                                            index=idx_name)
         ann = result_df["ann"].tolist()
-        # print(f"ann = {ann}")
         if query_index_ids[i] in ann:
             top10_call_back_counter += 1
         if query_index_ids[i] in ann[:5]:
             top5_call_back_counter += 1
         if query_index_ids[i] in ann[:3]:
             top3_call_back_counter += 1
+        if query_index_ids[i] == ann[0]:
+            top1_call_back_counter += 1
         # print(f"retrieved knowledge: \n{result_df}")
     print(f"total_query_num = {total_query_num}")
+    print(f"call back top1: call back queries: {top1_call_back_counter}, {top1_call_back_counter / total_query_num}")
     print(f"call back top3: call back queries: {top3_call_back_counter}, {top3_call_back_counter / total_query_num}")
     print(f"call back top5: call back queries: {top5_call_back_counter},{top5_call_back_counter / total_query_num}")
     print(f"call back top10: call back queries: {top10_call_back_counter}, {top10_call_back_counter / total_query_num}")
 
 
-E_COMMERCE_DATASET = "qgyd2021/e_commerce_customer_service"
-AI_MEDICAL_CHAT_DATASET = "ruslanmv/ai-medical-chatbot"
-NEWS_SUMMARY_DATASET = "argilla/news-summary"
-PATIENT_DOCTOR_CHAT_DATASET = "antareepdey/Patient_doctor_chat"
-CHAT_DOCTRO_DATASET = "avaliev/chat_doctor"
+
+
+
+def exp_indexing_whole_message_original_queries(dataset_id):
+    operator = VectorDBExpDataOperator()
+    operator.create_knowledge_db(dataset_id=dataset_id, indexing_whole_knowledge=True)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=False)
+
+
+def exp_indexing_whole_message_rephrased_queries(dataset_id):
+    operator = VectorDBExpDataOperator()
+    operator.create_knowledge_db(dataset_id=dataset_id, indexing_whole_knowledge=True)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=True)
+
+
+def exp_indexing_q_original_queries(dataset_id):
+    operator = VectorDBExpDataOperator()
+    operator.create_knowledge_db(dataset_id=dataset_id, indexing_whole_knowledge=False)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=False)
+
+
+def exp_indexing_q_rephrased_queries(dataset_id):
+    operator = VectorDBExpDataOperator()
+    operator.create_knowledge_db(dataset_id=dataset_id, indexing_whole_knowledge=False)
+    exp_searching(E_COMMERCE_DATASET, total_query_num=65, is_rephrasing_query=True)
+
 
 if __name__ == '__main__':
     """
@@ -129,7 +186,4 @@ if __name__ == '__main__':
     https://huggingface.co/datasets/avaliev/chat_doctor?row=0
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
-
-    operator = VectorDBExpDataOperator()
-    operator.create_knowledge_db(dataset_id=E_COMMERCE_DATASET)
-    # index_text(E_COMMERCE_DATASET, total_query_num=50)
+    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET)
