@@ -19,6 +19,9 @@ def load_a_dictionary_from_file(file_name):
     return json.loads(data)
 
 
-def write_a_list_to_csv_with_panda(data: list, file_path):
-    df = pd.DataFrame(data)
-    df.to_csv(file_path, index=False)
+def write_a_list_to_csv_with_panda(data, file_path):
+    if type(data) is list:
+        df = pd.DataFrame(data)
+        df.to_csv(file_path, index=False)
+    else:
+        data.to_csv(file_path, index=False)

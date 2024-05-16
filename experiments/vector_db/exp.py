@@ -89,7 +89,7 @@ class VectorDBExpDataOperator(DataOperator):
             storage_prefix = dataset_name
             if store_path != "":
                 storage_prefix = store_path + "/" + dataset_name
-            supplementary_info_list = self._load_knowledge_dataset(self.dataset_id)["Text"].map(get_q_in_qa_pair)
+            supplementary_info_list = self._load_knowledge_dataset(self.dataset_id).select(["Text"]).map(get_q_in_qa_pair)
             write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
 
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
