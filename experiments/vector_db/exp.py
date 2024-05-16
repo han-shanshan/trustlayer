@@ -23,6 +23,13 @@ def remove_newlines(data_entry):
     return data_entry
 
 
+def get_q_in_qa_pair(data_entries):
+    for key, value in data_entries.items():
+        if isinstance(value, str):  # Check if the field is a string
+            data_entries[key] = value.split("###Output:")[0].replace("###Input:", "")
+    return data_entries
+
+
 class VectorDBExpDataOperator(DataOperator):
     def __init__(self):
         super().__init__()
@@ -37,7 +44,7 @@ class VectorDBExpDataOperator(DataOperator):
             if len(text) > 3 * len(entry) and '. ' in text:
                 text = text.split(". ")[0].strip()
             return text
-        if self.dataset_id in [CHAT_DOCTRO_DATASET]:
+        if self.dataset_id in [CHAT_DOCTRO_DATASET, PATIENT_DOCTOR_CHAT_DATASET]:
             return self.summarization_pipe(entry)[0]['summary_text']
 
     def set_dataset_id(self, dataset_id):
@@ -76,6 +83,15 @@ class VectorDBExpDataOperator(DataOperator):
         self.dataset_id = dataset_id
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
             qa_sep = {"Q": "###Input:", "A": "###Onput:"}
+
+            supplementary_info_col = "Text"
+            dataset_name = dataset_id.split("/")[-1]
+            storage_prefix = dataset_name
+            if store_path != "":
+                storage_prefix = store_path + "/" + dataset_name
+            supplementary_info_list = self._load_knowledge_dataset(self.dataset_id)["Text"].map(get_q_in_qa_pair)
+            write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
+
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
             supplementary_info_col = "Description"
             dataset_name = dataset_id.split("/")[-1]
@@ -236,4 +252,7 @@ if __name__ == '__main__':
     # exp_indexing_q_original_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
     # exp_indexing_whole_message_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
     # exp_indexing_whole_message_original_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
-    exp_indexing_q_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
+    # exp_indexing_q_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
+    # exp_indexing_q_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
+    # exp_indexing_whole_message_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
+    exp_indexing_whole_message_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
