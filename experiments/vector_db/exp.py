@@ -78,6 +78,8 @@ class VectorDBExpDataOperator(DataOperator):
             indexing_whole_knowledge = True
         if self.dataset_id == "qgyd2021/e_commerce_customer_service":
             supplementary_info_col = "question"
+        if self.dataset_id == CHAT_DOCTRO_DATASET:
+            supplementary_info_col = "input"
 
         super().create_knowledge_db(dataset_id=self.dataset_id, store_path=store_path,
                                     knowledge_col=self.get_columns_to_keep(),
@@ -156,7 +158,7 @@ def exp_indexing_whole_message_original_queries(dataset_id, total_query_num):
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=True)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=False)
+    exp_searching(dataset_id, store_path=store_path, total_query_num=total_query_num, is_rephrasing_query=False)
 
 
 def exp_indexing_whole_message_rephrased_queries(dataset_id, total_query_num):
@@ -164,7 +166,7 @@ def exp_indexing_whole_message_rephrased_queries(dataset_id, total_query_num):
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=True)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=True)
+    exp_searching(dataset_id, store_path=store_path, total_query_num=total_query_num, is_rephrasing_query=True)
 
 
 def exp_indexing_q_original_queries(dataset_id, total_query_num):
@@ -172,7 +174,7 @@ def exp_indexing_q_original_queries(dataset_id, total_query_num):
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=False)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=False)
+    exp_searching(dataset_id, store_path=store_path, total_query_num=total_query_num, is_rephrasing_query=False)
 
 
 def exp_indexing_q_rephrased_queries(dataset_id, total_query_num):
@@ -180,7 +182,7 @@ def exp_indexing_q_rephrased_queries(dataset_id, total_query_num):
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
                                  indexing_whole_knowledge=False)
-    exp_searching(E_COMMERCE_DATASET, total_query_num=total_query_num, is_rephrasing_query=True)
+    exp_searching(dataset_id, store_path=store_path, total_query_num=total_query_num, is_rephrasing_query=True)
 
 
 if __name__ == '__main__':
@@ -191,4 +193,4 @@ if __name__ == '__main__':
     https://huggingface.co/datasets/avaliev/chat_doctor?row=0
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
-    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET)
+    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num = 50)

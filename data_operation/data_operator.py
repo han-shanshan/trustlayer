@@ -97,6 +97,7 @@ class DataOperator:
     is_qa=True: is the dataset a QA dataset or not
     qa_sep=None: separators for QA entries. Usually, a qa entry is in this format: "Question: xxx. Answer: xxx"
     """
+
     def _process_knowledge(self, knowledge_dataset, knowledge_col: Optional[List[str]] = None,
                            supplementary_info_col: str = None, indexing_whole_knowledge=False,
                            indexing_q=True, indexing_a=False, qa_sep: dict = None):

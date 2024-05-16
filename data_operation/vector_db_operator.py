@@ -1,6 +1,7 @@
 import faiss
 import pandas as pd
 from sentence_transformers import SentenceTransformer
+import os
 
 """
 Reference: https://medium.com/loopio-tech/how-to-use-faiss-to-build-your-first-similarity-search-bf0f708aa772
@@ -29,6 +30,9 @@ class VectorDBOperator():
         index = faiss.IndexFlatL2(vector_dimension)
         faiss.normalize_L2(vectors)
         index.add(vectors)
+        directory = os.path.dirname(idx_name)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         faiss.write_index(index, idx_name)
         del index
 
