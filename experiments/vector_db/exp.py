@@ -5,6 +5,8 @@ from data_operation.data_operator import DataOperator
 from data_operation.data_reader import DataReader
 from transformers import pipeline
 
+from utils.util_functions import write_a_list_to_csv_with_panda
+
 RANDOM_SEED = 0
 
 E_COMMERCE_DATASET = "qgyd2021/e_commerce_customer_service"
@@ -26,6 +28,7 @@ class VectorDBExpDataOperator(DataOperator):
         super().__init__()
         self.dataset_id = ""
         self.rephrase_pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+        self.summarization_pipe = pipeline("summarization", model="Falconsai/text_summarization")
 
     def rephrase(self, entry: str):
         if self.dataset_id in [E_COMMERCE_DATASET]:
@@ -35,7 +38,7 @@ class VectorDBExpDataOperator(DataOperator):
                 text = text.split(". ")[0].strip()
             return text
         if self.dataset_id in [CHAT_DOCTRO_DATASET]:
-            return self._generate_summarization_for_an_entry(entry)
+            return self.summarization_pipe(entry)[0]['summary_text']
 
     def set_dataset_id(self, dataset_id):
         self.dataset_id = dataset_id
@@ -68,13 +71,20 @@ class VectorDBExpDataOperator(DataOperator):
         return dataset.map(remove_newlines)
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
-                            supplementary_info_col: str = None, indexing_whole_knowledge=False,
-                            indexing_q=True, indexing_a=False, qa_sep: dict = None):
+                            supplementary_info_col: Optional[List[str]] = None, indexing_whole_knowledge=False,
+                            indexing_q=True, indexing_a=False, qa_sep: dict = None): # todo: remove suplementary info
         self.dataset_id = dataset_id
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
             qa_sep = {"Q": "###Input:", "A": "###Onput:"}
-        if self.dataset_id == "ruslanmv/ai-medical-chatbot":
+        if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
             supplementary_info_col = "Description"
+            dataset_name = dataset_id.split("/")[-1]
+            storage_prefix = dataset_name
+            if store_path != "":
+                storage_prefix = store_path + "/" + dataset_name
+            supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
+            write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
+
         if self.dataset_id == "argilla/news-summary":
             supplementary_info_col = "prediction"
             indexing_whole_knowledge = True
@@ -112,6 +122,8 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     # full_idx_name = "full_" + dataset_name + "_idx.bin"
     plaintext_knowledge_file_name = storage_prefix + "_knowledge_data.csv"
     question_file_name = f"{storage_prefix}_supplementary_data.csv"
+    if dataset_id == AI_MEDICAL_CHAT_DATASET and not is_rephrasing_query:  # extract queries from knowledge file
+        question_file_name = f"{storage_prefix}_supplementary2_data.csv"
 
     df = DataReader.read_data_from_file(question_file_name)
     col_name = df.columns[0]
@@ -125,7 +137,7 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     top10_call_back_counter = 0
 
     queries = []
-    if is_rephrasing_query:
+    if is_rephrasing_query and dataset_id != AI_MEDICAL_CHAT_DATASET:
         for i in range(total_query_num):
             old_query = original_queries.iloc[i][col_name]
             query = operator.rephrase(old_query)
@@ -156,6 +168,12 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
 
 
 def exp_indexing_whole_message_original_queries(dataset_id, total_query_num):
+    """
+    call back top1: call back queries: 50, 1.0
+call back top3: call back queries: 50, 1.0
+call back top5: call back queries: 50,1.0
+call back top10: call back queries: 50, 1.0
+    """
     store_path = "exp_indexing_whole_message_original_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
@@ -164,6 +182,12 @@ def exp_indexing_whole_message_original_queries(dataset_id, total_query_num):
 
 
 def exp_indexing_whole_message_rephrased_queries(dataset_id, total_query_num):
+    """
+    call back top1: call back queries: 33, 0.66
+call back top3: call back queries: 39, 0.78
+call back top5: call back queries: 40,0.8
+call back top10: call back queries: 41, 0.82
+    """
     store_path = "exp_indexing_whole_message_rephrased_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
@@ -172,6 +196,12 @@ def exp_indexing_whole_message_rephrased_queries(dataset_id, total_query_num):
 
 
 def exp_indexing_q_original_queries(dataset_id, total_query_num):
+    """
+    call back top1: call back queries: 50, 1.0
+    call back top3: call back queries: 50, 1.0
+    call back top5: call back queries: 50,1.0
+    call back top10: call back queries: 50, 1.0
+    """
     store_path = "exp_indexing_q_original_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
@@ -180,6 +210,13 @@ def exp_indexing_q_original_queries(dataset_id, total_query_num):
 
 
 def exp_indexing_q_rephrased_queries(dataset_id, total_query_num):
+    """
+    CHAT_DOCTRO_DATASET
+    call back top1: call back queries: 44, 0.88
+    call back top3: call back queries: 47, 0.94
+    call back top5: call back queries: 48,0.96
+    call back top10: call back queries: 49, 0.98
+    """
     store_path = "exp_indexing_q_rephrased_queries"
     operator = VectorDBExpDataOperator()
     operator.create_knowledge_db(dataset_id=dataset_id, store_path=store_path,
@@ -195,4 +232,8 @@ if __name__ == '__main__':
     https://huggingface.co/datasets/avaliev/chat_doctor?row=0
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
-    exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
+    # exp_indexing_q_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
+    # exp_indexing_q_original_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
+    # exp_indexing_whole_message_rephrased_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
+    # exp_indexing_whole_message_original_queries(CHAT_DOCTRO_DATASET, total_query_num=50)
+    exp_indexing_q_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
