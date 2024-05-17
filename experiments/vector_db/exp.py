@@ -76,9 +76,9 @@ class VectorDBExpDataOperator(DataOperator):
         storage_prefix = dataset_name
         if store_path != "":
             storage_prefix = store_path + "/" + dataset_name
-        if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
-            supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
-            write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
+        # if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
+        #     supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
+        #     write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
             data = self._load_knowledge_dataset(self.dataset_id)
             supplementary_info_list = data.map(get_q_in_qa_pair)
@@ -89,7 +89,7 @@ class VectorDBExpDataOperator(DataOperator):
                             indexing_q=True, indexing_a=False, qa_sep: dict = None):  # todo: remove suplementary info
         self.dataset_id = dataset_id
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
-            supplementary_info_col = "Description"
+            supplementary_info_col = "Patient"
         if self.dataset_id == "argilla/news-summary":
             supplementary_info_col = "prediction"
             indexing_whole_knowledge = True
@@ -130,8 +130,6 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     # full_idx_name = "full_" + dataset_name + "_idx.bin"
     plaintext_knowledge_file_name = storage_prefix + "_knowledge_data.csv"
     question_file_name = f"{storage_prefix}_supplementary_data.csv"
-    if dataset_id == AI_MEDICAL_CHAT_DATASET and not is_rephrasing_query:  # extract queries from knowledge file
-        question_file_name = f"{storage_prefix}_supplementary2_data.csv"
 
     df = DataReader.read_data_from_file(question_file_name)
     col_name = df.columns[0]
