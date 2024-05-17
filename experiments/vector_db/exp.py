@@ -24,7 +24,7 @@ def remove_newlines(data_entry):
 
 
 def get_q_in_qa_pair(data_entry):
-    data_entry["Text"] = data_entry["Text"].replace("Input:", "")
+    data_entry["Text"] = data_entry["Text"].split("###Output:")[0].replace("###Input:", "")
     return data_entry
 
 
@@ -63,10 +63,6 @@ class VectorDBExpDataOperator(DataOperator):
                 columns_to_keep = ["input", "output"]
         return columns_to_keep
 
-    def get_is_qa(self):
-        return self.dataset_id in ["qgyd2021/e_commerce_customer_service", "antareepdey/Patient_doctor_chat",
-                                   "ruslanmv/ai-medical-chatbot", "avaliev/chat_doctor"]
-
     def _load_knowledge_dataset(self, dataset_name):
         if dataset_name == "qgyd2021/e_commerce_customer_service":
             dataset = load_dataset("qgyd2021/e_commerce_customer_service", 'faq')["train"]  # 65 FAQ dataset
@@ -81,14 +77,13 @@ class VectorDBExpDataOperator(DataOperator):
         if store_path != "":
             storage_prefix = store_path + "/" + dataset_name
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
-
             supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
             write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
             data = self._load_knowledge_dataset(self.dataset_id)
-            supplementary_info_list = data.remove_columns([col for col in data.column_names if col != "Text"]).map(
-                get_q_in_qa_pair)
+            supplementary_info_list = data.map(get_q_in_qa_pair)
             write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
+
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
                             supplementary_info_col: Optional[List[str]] = None, indexing_whole_knowledge=False,
@@ -247,9 +242,9 @@ if __name__ == '__main__':
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
     dataset_name = PATIENT_DOCTOR_CHAT_DATASET
-    exp_indexing_q_rephrased_queries(dataset_name, total_query_num=50)
+    # exp_indexing_q_rephrased_queries(dataset_name, total_query_num=50)
     # exp_indexing_q_original_queries(dataset_name, total_query_num=50)
-    # exp_indexing_whole_message_rephrased_queries(dataset_name, total_query_num=50)
+    exp_indexing_whole_message_rephrased_queries(dataset_name, total_query_num=50)
     # exp_indexing_whole_message_original_queries(dataset_name, total_query_num=50)
     # exp_indexing_q_rephrased_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
     # exp_indexing_q_original_queries(AI_MEDICAL_CHAT_DATASET, total_query_num=50)
