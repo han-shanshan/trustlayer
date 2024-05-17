@@ -36,7 +36,7 @@ class VectorDBExpDataOperator(DataOperator):
         self.summarization_pipe = pipeline("summarization", model="Falconsai/text_summarization")
 
     def rephrase(self, entry: str):
-        if self.dataset_id in [E_COMMERCE_DATASET]:
+        if self.dataset_id in [E_COMMERCE_DATASET, AI_MEDICAL_CHAT_DATASET]:
             # the question in the dataset is short; need longer questions, so use tinyllama
             text = self.rephrase_pipe(entry)[0]['generated_text']
             if len(text) > 3 * len(entry) and '. ' in text:
@@ -83,7 +83,6 @@ class VectorDBExpDataOperator(DataOperator):
             data = self._load_knowledge_dataset(self.dataset_id)
             supplementary_info_list = data.map(get_q_in_qa_pair)
             write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
-
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
                             supplementary_info_col: Optional[List[str]] = None, indexing_whole_knowledge=False,
@@ -146,7 +145,7 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     top10_call_back_counter = 0
 
     queries = []
-    if is_rephrasing_query and dataset_id != AI_MEDICAL_CHAT_DATASET:
+    if is_rephrasing_query:
         for i in range(total_query_num):
             old_query = original_queries.iloc[i][col_name]
             query = operator.rephrase(old_query)
