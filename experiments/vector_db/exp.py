@@ -39,8 +39,6 @@ class VectorDBExpDataOperator(DataOperator):
         if self.dataset_id in [E_COMMERCE_DATASET, AI_MEDICAL_CHAT_DATASET]:
             # the question in the dataset is short; need longer questions, so use tinyllama
             text = self.rephrase_pipe(entry)[0]['generated_text']
-            if len(text) > 3 * len(entry) and '. ' in text:
-                text = text.split(". ")[0].strip()
             return text
         if self.dataset_id in [CHAT_DOCTRO_DATASET, PATIENT_DOCTOR_CHAT_DATASET]:
             return self.summarization_pipe(entry)[0]['summary_text']
