@@ -75,31 +75,27 @@ class VectorDBExpDataOperator(DataOperator):
 
         return dataset.map(remove_newlines)
 
-    def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
-                            supplementary_info_col: Optional[List[str]] = None, indexing_whole_knowledge=False,
-                            indexing_q=True, indexing_a=False, qa_sep: dict = None): # todo: remove suplementary info
-        self.dataset_id = dataset_id
+    def create_supplementary_file(self, dataset_id, store_path):
+        dataset_name = dataset_id.split("/")[-1]
+        storage_prefix = dataset_name
+        if store_path != "":
+            storage_prefix = store_path + "/" + dataset_name
+        if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
+
+            supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
+            write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
         if self.dataset_id == "antareepdey/Patient_doctor_chat":
-            qa_sep = {"Q": "###Input:", "A": "###Output:"}
-            supplementary_info_col = "Text"
-            dataset_name = dataset_id.split("/")[-1]
-            storage_prefix = dataset_name
-            if store_path != "":
-                storage_prefix = store_path + "/" + dataset_name
             data = self._load_knowledge_dataset(self.dataset_id)
             supplementary_info_list = data.remove_columns([col for col in data.column_names if col != "Text"]).map(
                 get_q_in_qa_pair)
             write_a_list_to_csv_with_panda(supplementary_info_list, f'{storage_prefix}_supplementary_data.csv')
 
+    def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
+                            supplementary_info_col: Optional[List[str]] = None, indexing_whole_knowledge=False,
+                            indexing_q=True, indexing_a=False, qa_sep: dict = None):  # todo: remove suplementary info
+        self.dataset_id = dataset_id
         if self.dataset_id == AI_MEDICAL_CHAT_DATASET:
             supplementary_info_col = "Description"
-            dataset_name = dataset_id.split("/")[-1]
-            storage_prefix = dataset_name
-            if store_path != "":
-                storage_prefix = store_path + "/" + dataset_name
-            supplementary_info_list2 = self._load_knowledge_dataset(self.dataset_id)["Patient"]
-            write_a_list_to_csv_with_panda(supplementary_info_list2, f'{storage_prefix}_supplementary2_data.csv')
-
         if self.dataset_id == "argilla/news-summary":
             supplementary_info_col = "prediction"
             indexing_whole_knowledge = True
@@ -107,6 +103,9 @@ class VectorDBExpDataOperator(DataOperator):
             supplementary_info_col = "question"
         if self.dataset_id == CHAT_DOCTRO_DATASET:
             supplementary_info_col = "input"
+        if self.dataset_id == "antareepdey/Patient_doctor_chat":
+            qa_sep = {"Q": "###Input:", "A": "###Output:"}
+        self.create_supplementary_file(dataset_id=dataset_id, store_path=store_path)
 
         super().create_knowledge_db(dataset_id=self.dataset_id, store_path=store_path,
                                     knowledge_col=self.get_columns_to_keep(),
