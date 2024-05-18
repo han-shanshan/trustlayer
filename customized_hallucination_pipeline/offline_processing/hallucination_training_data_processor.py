@@ -44,8 +44,8 @@ class HallucinationTrainingDataProcessor(DataProcessor):
         final_dataset.set_format("torch")
         return final_dataset
 
-    def get_dataset_info(self, desired_total_data_n=None, file_path=None, training_per=0.8, validation_per=0.1,
-                         test_per=0.1):
+    def get_dataset(self, desired_total_data_n=None, file_path=None, training_per=0.8, validation_per=0.1,
+                    test_per=0.1):
         import pandas as pd
         df = pd.read_excel(file_path)
         # todo: translate to English

@@ -3,6 +3,7 @@ from training.trust_inference_engine import TrustInferenceEngine
 from training.training_engine import TrainingEngine
 import os
 import torch
+import json
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
@@ -19,13 +20,18 @@ Only use inputs as training dataset. When training toxicity classifier, select t
 when training unsafe prompts, select jailbreaking = 1 and toxicity = 0; 
 https://huggingface.co/datasets/lmsys/toxic-chat 
 
-
 """
+
+def train(config_path=""):
+    config = json.load(open(config_path))
+    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME)
+    trainer.train()
+
+
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME)
-    trainer.train()
+    train()
     # text = "i'm happy hahaha"
     #
     # inference_engine = InferenceEngine(default_task=TASK_NAME)

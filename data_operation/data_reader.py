@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from datasets import load_dataset
 
 
 def read_data_from_txt_file(file_path, retrieved_col_name=""):
@@ -35,6 +36,10 @@ class DataReader:
         with open(file_path, 'r') as file:
             content = file.read()
         return content
+
+    @staticmethod
+    def read_csv_file_data(csv_file_path):
+        return load_dataset('csv', data_files=csv_file_path)
 
     @staticmethod
     def read_data_from_file(file_path, retrieved_col_name="all"):  # "all": retrieve all column

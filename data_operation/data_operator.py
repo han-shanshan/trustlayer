@@ -3,11 +3,9 @@ from datasets import load_dataset, concatenate_datasets
 from transformers import pipeline
 import re
 from data_operation.data_reader import DataReader
-from utils.translator import Translator
 from data_operation.vector_db_operator import VectorDBOperator
 from typing import List, Optional
-
-from utils.util_functions import write_a_dictionary_to_file, write_a_list_to_csv_with_panda, load_a_dictionary_from_file
+from utils.file_operations import write_a_dictionary_to_file, write_a_list_to_csv_with_panda, load_a_dictionary_from_file
 
 
 def retrieve_company_name(text, starting_position):
@@ -29,7 +27,6 @@ class DataOperator:
         "yanekyuk/bert-uncased-keyword-extractor" will only extract single keywords
     todo: Will be replaced with Fox because the performance is not quite satisfying
     """
-
     def __init__(self):
         self.title_generation_pipe = pipeline("text2text-generation", model="czearing/article-title-generator")
         self.vector_db_operator = VectorDBOperator()

@@ -8,7 +8,7 @@ from training.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
 from transformers import Trainer
 from peft import get_peft_model
-from training.config_manager import ConfigManager
+from training.training_config_manager import TrainingConfigManager
 
 
 class HallucinationTrainingEngine(TrainingEngine):
@@ -37,14 +37,14 @@ class HallucinationTrainingEngine(TrainingEngine):
 
     def train(self):
         data_processor = HallucinationTrainingDataProcessor()
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info(
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(
             file_path="../data/hallucination_cases.xlsx")
         print(f"id2labels={id2labels}")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 
-        config_manager = ConfigManager(model=self.base_model_name)
+        config_manager = TrainingConfigManager(model=self.base_model_name)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config

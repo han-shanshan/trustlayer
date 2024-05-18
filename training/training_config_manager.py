@@ -3,10 +3,11 @@ from transformers import TrainingArguments
 from training.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU
 
 
-class ConfigManager:
-    def __init__(self, task_name=None, model=None):
+class TrainingConfigManager:
+    def __init__(self, task_name=None, model=None, config=None):
         self.task_name = task_name
         self.model = model
+        self.config = config
 
     def get_training_config(self, output_dir, batch_size=8):
         if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:

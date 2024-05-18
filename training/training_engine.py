@@ -4,7 +4,7 @@ from transformers import Trainer
 from peft import get_peft_model
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
-from training.config_manager import ConfigManager
+from training.training_config_manager import TrainingConfigManager
 from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
     TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
     CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME
@@ -35,11 +35,12 @@ def multi_label_metrics(predictions, labels, threshold=0.5):
 
 
 class TrainingEngine:
-    def __init__(self, base_model_name, task_name):
+    def __init__(self, base_model_name, task_name, config=None):
         self.base_model_name = base_model_name
         self.task_name = task_name
         self.label_metrics = None
         self.set_label_metrics()
+        self.config = config
 
     def set_task_type(self, task_name):
         self.task_name = task_name
@@ -96,12 +97,12 @@ class TrainingEngine:
 
     def train(self):
         data_processor = DataProcessor(task_name=self.task_name)
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset_info(desired_total_data_n=10000)
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset()
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 
-        config_manager = ConfigManager(self.task_name, self.base_model_name)
+        config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config

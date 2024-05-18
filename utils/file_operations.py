@@ -29,3 +29,8 @@ def write_a_list_to_csv_with_panda(data, file_path):
         df.to_csv(file_path, index=False)
     else:
         data.to_csv(file_path, index=False)
+
+
+def write_hf_dataset_to_csv(dataset_to_store, csv_file_path):
+    df = pd.DataFrame(dataset_to_store)
+    df.to_csv(csv_file_path, index=False)

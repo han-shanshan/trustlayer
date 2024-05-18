@@ -2,7 +2,7 @@ from data_operation.data_reader import DataReader
 from experiments.experiment_model_loader import ExperimentModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL, LLAMA3_8B_MODEL, \
     FOX_MODEL
 from experiments.wrappers.exp_data_processing import url_exp_construct_data
-from utils.util_functions import write_a_list_to_file
+from utils.file_operations import write_a_list_to_file
 from wrapper.url_detection_wrapper import URLDetectionWrapper
 import time
 import sys
