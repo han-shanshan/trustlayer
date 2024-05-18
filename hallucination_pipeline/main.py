@@ -2,7 +2,7 @@ import sys
 from hallucination_pipeline.online_processing.post_processing import PostProcessor
 from hallucination_pipeline.online_processing.grounding_tool import HallucinationGroundingTool
 from hallucination_pipeline.test_use_case import warranty_use_case, fedml_security_detector_config
-from trust_libs.trust_detector import TrustDetector
+from safety_detection.safety_detector import SafetyDetector
 
 use_case = warranty_use_case
 
@@ -13,7 +13,7 @@ def fake_GPT4_API_for_testing(text=None):
 
 if __name__ == '__main__':
     prompt = use_case["prompt"]
-    input_trust_detector = TrustDetector(fedml_security_detector_config)
+    input_trust_detector = SafetyDetector(fedml_security_detector_config)
 
     if input_trust_detector.is_unsafe_content_detected(prompt):
         print("Unsafe content detected. Exiting program.")

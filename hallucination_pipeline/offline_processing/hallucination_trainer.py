@@ -1,14 +1,14 @@
 from hallucination_pipeline.offline_processing.hallucination_training_data_processor import \
     HallucinationTrainingDataProcessor
 from hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
-from multitask_lora.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
+from training.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
     FOX_BASE_GPU
-from multitask_lora.trust_inference_engine import TrustInferenceEngine
-from multitask_lora.training_engine import TrainingEngine
+from training.trust_inference_engine import TrustInferenceEngine
+from training.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
 from transformers import Trainer
 from peft import get_peft_model
-from multitask_lora.config_manager import ConfigManager
+from training.config_manager import ConfigManager
 
 
 class HallucinationTrainingEngine(TrainingEngine):

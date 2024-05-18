@@ -1,6 +1,6 @@
 import sys
 import yaml
-from trust_libs.trust_detector import TrustDetector
+from safety_detection.safety_detector import SafetyDetector
 from wrapper.customization_wrapper import CustomizationWrapper
 
 def fake_LLM_API_for_testing(text=None):
@@ -12,7 +12,7 @@ if __name__ == '__main__':
     print(f"config: {config}")
     prompt = config['preprocessing']['prompt']
     print("---------------------Detect unsafe contents in input---------------------")
-    input_trust_detector = TrustDetector(config['preprocessing_args'])
+    input_trust_detector = SafetyDetector(config['preprocessing_args'])
 
     if input_trust_detector.is_unsafe_content_detected(prompt, reference_text=None):
         print("Unsafe content detected. Exiting program.")
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     raw_output = fake_LLM_API_for_testing(prompt)
 
     print("---------------------Detect unsafe contents in output---------------------")
-    output_trust_detector = TrustDetector(config['postprocessing_args'])
+    output_trust_detector = SafetyDetector(config['postprocessing_args'])
     if output_trust_detector.is_unsafe_content_detected(raw_output, reference_text=prompt):
         print("Unsafe content detected. Exiting program.")
         sys.exit(1)  # Exit the entire script
