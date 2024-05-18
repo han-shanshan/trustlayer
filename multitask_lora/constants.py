@@ -6,6 +6,7 @@ UNSAFE_PROMPT_TASK_NAME = "unsafe_prompt"
 HALLUCINATION_TASK_NAME = "hallucination"
 TOXICITY_TASK_NAME = "toxicity"
 CUSTOMIZED_HALLUCINATION_TASK_NAME = "customized_hallucination"
+HALLUCINATION_REASONING_TASK_NAME = "hallucination_reasoning"
 
 ############ MODEL #############
 MODEL_NAME_BERT_BASE = "google-bert/bert-base-uncased"

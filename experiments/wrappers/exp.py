@@ -1,5 +1,5 @@
 from data_operation.data_reader import DataReader
-from experiments.model_loader import ModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL, LLAMA3_8B_MODEL, \
+from experiments.experiment_model_loader import ExperimentModelLoader, TINYLLAMA_MODEL, MISTRAL7B_MODEL, FALCON40B_MODEL, LLAMA3_8B_MODEL, \
     FOX_MODEL
 from experiments.wrappers.exp_data_processing import url_exp_construct_data
 from utils.util_functions import write_a_list_to_file
@@ -23,7 +23,7 @@ def wrapper_test():
 
 
 def llm_test(llm_name):
-    model_loader = ModelLoader(llm_name)
+    model_loader = ExperimentModelLoader(llm_name)
     pipe = model_loader.load_model()
     dataset = url_exp_construct_data()
     new_texts = []

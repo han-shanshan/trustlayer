@@ -6,7 +6,8 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from multitask_lora.config_manager import ConfigManager
 from multitask_lora.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU
+    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
+    CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME
 from multitask_lora.data_processor import DataProcessor
 import evaluate
 
@@ -66,14 +67,14 @@ class TrainingEngine:
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
-                              TOXICITY_TASK_NAME]:
+                              TOXICITY_TASK_NAME, CUSTOMIZED_HALLUCINATION_TASK_NAME]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,
                                                                       label2id=label2id,
                                                                       load_in_8bit=False
                                                                       )
-        else:
+        elif self.task_name in [SEMANTIC_TASK_NAME, TOPIC_TASK_NAME]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       problem_type="multi_label_classification",
                                                                       num_labels=len(label_dicts),
@@ -81,6 +82,9 @@ class TrainingEngine:
                                                                       label2id=label2id,
                                                                       load_in_8bit=False
                                                                       )
+        elif self.task_name in [HALLUCINATION_REASONING_TASK_NAME]:  # add explanations for inference results
+            pass
+
 
     def get_tokenizer(self, model):
         tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
