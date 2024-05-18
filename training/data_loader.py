@@ -61,15 +61,17 @@ class DataLoader:
         return DatasetDict(dataset)
 
     def load_toxicity_data(self, training_per=0.8, validation_per=0.1, test_per=0.1):
-        toxicity_data_3m = self._load_toxicity_data_3M()
-        # TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
+        # # this error should have been fixed? TypeError: TextEncodeInput must be Union[TextInputSequence,
+        # Tuple[InputSequence, InputSequence]]
         jigsaw_comment_dataset = self._load_jigsaw_comment_dataset()
         jigsaw_unindended_bias_data = self._load_jigsaw_unindended_bias_dataset()
         toxicity3M_dataset = self._load_toxicity_data_3M()
-        toxic_chat_data_subset1 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
-        toxic_chat_data_subset2 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
+        d1 = load_dataset("lmsys/toxic-chat", "toxicchat1123")
+        d2 = load_dataset("lmsys/toxic-chat", "toxicchat0124")
+        toxic_chat_data_subset1 = self._process_toxic_chat_subdata(d1)
+        toxic_chat_data_subset2 = self._process_toxic_chat_subdata(d2)
         merged_dataset = None
-        for D in [toxicity_data_3m, jigsaw_comment_dataset, jigsaw_unindended_bias_data, toxicity3M_dataset,
+        for D in [jigsaw_comment_dataset, jigsaw_unindended_bias_data, toxicity3M_dataset,
                   toxic_chat_data_subset1, toxic_chat_data_subset2]:
             for split in D.keys():
                 if merged_dataset is None:
@@ -77,9 +79,20 @@ class DataLoader:
                 else:
                     merged_dataset = concatenate_datasets([merged_dataset, D[split]])
         merged_dataset = merged_dataset.shuffle(seed=0)
-        print(f"{type(merged_dataset)} {merged_dataset}")
+        train_testval_split = merged_dataset.train_test_split(test_size=test_per+validation_per)
+        train_dataset = train_testval_split['train']
+        testval_dataset = train_testval_split['test']
+        test_validation_split = testval_dataset.train_test_split(test_size=test_per/(test_per + validation_per))
+        test_dataset = test_validation_split['test']
+        validation_dataset = test_validation_split['train']
 
-        return merged_dataset
+        split_dataset = DatasetDict({
+            'train': train_dataset,
+            'test': test_dataset,
+            'validation': validation_dataset
+        })
+
+        return split_dataset
 
     @staticmethod
     def _load_jigsaw_comment_dataset():
@@ -106,8 +119,6 @@ class DataLoader:
         jigsaw_comment_dataset['train'] = jigsaw_comment_dataset['train'].remove_columns(
             ['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'])
         jigsaw_comment_dataset = jigsaw_comment_dataset.rename_column('comment_text', 'text')
-        print(jigsaw_comment_dataset)
-        print(jigsaw_comment_dataset["train"][0])
         return jigsaw_comment_dataset
 
     @staticmethod
@@ -124,8 +135,6 @@ class DataLoader:
         csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
                                      'jigsaw-unintended-bias-in-toxicity-classification', 'all_data.csv')
         jigsaw_unindended_bias_data = DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
-        print(jigsaw_unindended_bias_data)
-        print(jigsaw_unindended_bias_data["train"][0])
 
         # ######### testing ##################
         # def filter_toxicity_annotator_count(example):
@@ -165,9 +174,15 @@ class DataLoader:
     @staticmethod
     def _process_toxic_chat_subdata(toxic_chat_data):
         from langdetect import detect
+        import re
 
         def remove_jailbreaking_and_non_english_inputs(example):
-            return example["jailbreaking"] == 0 and detect(example["user_input"]) == 'en'
+            return example["jailbreaking"] == 0 and \
+                   not re.compile(
+                       r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
+                       r'-+*/]\s*\d+\s*=\s*))$').match(
+                       example["user_input"]) \
+                   and detect(example["user_input"]) == 'en'
 
         toxic_chat_data = toxic_chat_data.filter(remove_jailbreaking_and_non_english_inputs)
         toxic_chat_data = toxic_chat_data.remove_columns(
@@ -200,8 +215,6 @@ class DataLoader:
         for phase in dataset.keys():
             filtered_dataset_in_phase = dataset[phase].filter(lambda example: example[col_name] is not None)
             filtered_dataset[phase] = filtered_dataset_in_phase
-            print(f"{phase}: {len(dataset[phase])} ==== {len(filtered_dataset[phase])}")
-        #
         # def change_labels(example):
         #     example['label'] = np.argmax(example['label'])
         # filtered_dataset = DatasetDict(filtered_dataset).map(change_labels)
