@@ -1,4 +1,4 @@
-from hallucination_pipeline.offline_processing.hallucination_data_operator import HallucinationDataOperator
+from customized_hallucination_pipeline.offline_processing.hallucination_data_operator import HallucinationDataOperator
 from utils.translator import Translator
 
 

@@ -1,7 +1,7 @@
 import sys
-from hallucination_pipeline.online_processing.post_processing import PostProcessor
-from hallucination_pipeline.online_processing.grounding_tool import HallucinationGroundingTool
-from hallucination_pipeline.test_use_case import warranty_use_case, fedml_security_detector_config
+from customized_hallucination_pipeline.online_processing.post_processing import PostProcessor
+from customized_hallucination_pipeline.online_processing.grounding_tool import HallucinationGroundingTool
+from customized_hallucination_pipeline.test_use_case import warranty_use_case, fedml_security_detector_config
 from safety_detection.safety_detector import SafetyDetector
 
 use_case = warranty_use_case

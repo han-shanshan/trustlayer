@@ -1,4 +1,4 @@
-from hallucination_pipeline.online_processing.hallucination_type_detector import HallucinationTypeDetector
+from customized_hallucination_pipeline.online_processing.hallucination_type_detector import HallucinationTypeDetector
 from wrapper.substitute_sensitive_info import SubstituteWrapper
 from wrapper.wrapper_base import BaseWrapper
 
