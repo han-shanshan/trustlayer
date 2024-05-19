@@ -5,6 +5,13 @@ from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TA
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
 
 
+def remove_newlines(data_entry):
+    for key, value in data_entry.items():
+        if isinstance(value, str):  # Check if the field is a string
+            data_entry[key] = value.replace("\n", " ")  # Replace newlines with space
+    return data_entry
+
+
 class DataLoader:
     def __init__(self):
         pass
@@ -30,23 +37,26 @@ class DataLoader:
         # downloaded_dataset = downloaded_dataset.shuffle(seed=0)
         split_dataset = self.shuffle_a_dataset_and_get_splitted(task_data, test_per, validation_per)
         print(f"split data = {split_dataset}")
-        return split_dataset
 
-        # if desired_total_data_n is None:  # return full dataset by default
-        #     return downloaded_dataset
-        # small_dataset = self.get_a_small_dataset(downloaded_dataset, desired_total_data_n, test_per, training_per,
-        #                                          validation_per)
-        # print(f"new dataset: {DatasetDict(small_dataset)}")
-        # return small_dataset
+        if desired_total_data_n is None:  # return full dataset by default
+            return split_dataset
+        small_dataset = self.get_a_small_dataset(split_dataset, desired_total_data_n, test_per, training_per,
+                                                 validation_per)
+        print(f"new dataset: {DatasetDict(small_dataset)}")
+        return small_dataset
 
-    # @staticmethod def get_a_small_dataset(downloaded_dataset, desired_total_data_num, test_per, training_per,
-    # validation_per): for k in downloaded_dataset.keys(): if "train" in k: if int(desired_total_data_num *
-    # training_per) < len(downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select( range(int(
-    # desired_total_data_num * training_per))) if "validation" in k: if int(desired_total_data_num * validation_per)
-    # < len(downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select( range(int(
-    # desired_total_data_num * validation_per))) if "test" in k: if int(desired_total_data_num * test_per) < len(
-    # downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select(range(int(desired_total_data_num *
-    # test_per))) return DatasetDict(downloaded_dataset)
+    @staticmethod
+    def get_a_small_dataset(downloaded_dataset, desired_total_data_num, test_per, training_per,
+                            validation_per):  # for testing use
+        for k in downloaded_dataset.keys():
+            if "train" in k and int(desired_total_data_num * training_per) < len(downloaded_dataset[k]):
+                downloaded_dataset[k] = downloaded_dataset[k].select(range(int(desired_total_data_num * training_per)))
+            if "validation" in k and int(desired_total_data_num * validation_per) < len(downloaded_dataset[k]):
+                downloaded_dataset[k] = downloaded_dataset[k].select(
+                    range(int(desired_total_data_num * validation_per)))
+            if "test" in k and int(desired_total_data_num * test_per) < len(downloaded_dataset[k]):
+                downloaded_dataset[k] = downloaded_dataset[k].select(range(int(desired_total_data_num * test_per)))
+        return DatasetDict(downloaded_dataset)
 
     @staticmethod
     def load_unsafe_prompt_data():
@@ -65,9 +75,10 @@ class DataLoader:
         toxic_chat_data_subset1 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
         toxic_chat_data_subset2 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
 
-        merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates([jigsaw_comment_dataset, jigsaw_unindended_bias_data,
-                                                                                        toxic_chat_data_subset1, toxic_chat_data_subset2,
-                                                                                        toxicity3M_dataset])
+        merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates(
+            [jigsaw_comment_dataset, jigsaw_unindended_bias_data,
+             toxic_chat_data_subset1, toxic_chat_data_subset2,
+             toxicity3M_dataset])
         return merged_dataset
 
     @staticmethod
@@ -97,7 +108,8 @@ class DataLoader:
             "label": list(unique_texts.values())
         }
         merged_datasets_without_duplicates = Dataset.from_dict(transformed_data)
-        merged_datasets_without_duplicates = merged_datasets_without_duplicates.filter(lambda example: example['label'] is not None)
+        merged_datasets_without_duplicates = merged_datasets_without_duplicates.filter(
+            lambda example: example['label'] is not None)
         return merged_datasets_without_duplicates
 
     @staticmethod
@@ -190,6 +202,7 @@ class DataLoader:
         for split in toxicity_data_3m.keys():
             toxicity_data_3m[split] = toxicity_data_3m[split].rename_column("is_toxic", "label")
         filtered_data = self.filter_non_records(toxicity_data_3m, "text")
+        print(f"filtered_data = {filtered_data}")
         return filtered_data.remove_columns(["lang"])
 
     @staticmethod
@@ -320,3 +333,4 @@ if __name__ == '__main__':
     # desired_total_data_n = 10000
     dataset = DataLoader().load_data(TOXICITY_TASK_NAME)
     # DataLoader().load_data(task_name=GIBBERISH_TASK_NAME)
+    # DataLoader()._load_toxicity_data_3M()

@@ -29,10 +29,8 @@ class DataProcessor:
             Exception("wrong task name")
 
     def get_remove_column_names(self, dataset):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME]:
             return "text"
-        if self.task_name is TOXICITY_TASK_NAME:
-            return ["text", "lang"]
         train_phase_name, _, _ = self.get_phase_names()
         if self.task_name is HALLUCINATION_TASK_NAME:
             hallucination_columns = dataset[train_phase_name].column_names
@@ -90,7 +88,7 @@ class DataProcessor:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
-    def get_dataset(self, desired_total_data_n=None, file_path=None, training_per=0.8, validation_per=0.1, test_per=0.1):
+    def get_dataset(self, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
         dataset = DataLoader().load_data(task_name=self.task_name, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
         label_names = self.prepare_label_dict_for_a_task(dataset)

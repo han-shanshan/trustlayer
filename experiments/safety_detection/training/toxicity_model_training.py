@@ -5,7 +5,6 @@ import os
 import torch
 import json
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 TASK_NAME = TOXICITY_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
@@ -24,6 +23,7 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
+
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME)
     trainer.train()
     # text = "i'm happy hahaha"

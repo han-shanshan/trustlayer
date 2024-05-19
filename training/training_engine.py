@@ -13,6 +13,7 @@ from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HAL
 from training.data_processor import DataProcessor
 import evaluate
 import wandb
+from utils.file_operations import write_hf_dataset_to_csv
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -79,19 +80,15 @@ class TrainingEngine:
         predictions = np.argmax(logits, axis=1)
 
         accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
-        precision = precision_metric.compute(predictions=predictions, references=labels)
-        recall = recall_metric.compute(predictions=predictions, references=labels)
-        f1 = f1_metric.compute(predictions=predictions, references=labels)
-
-        probabilities = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
-        roc_auc = roc_auc_metric.compute(prediction_scores=probabilities, references=labels)
+        precision = precision_metric.compute(predictions=predictions, references=labels, average='micro')
+        recall = recall_metric.compute(predictions=predictions, references=labels, average='micro')
+        f1 = f1_metric.compute(predictions=predictions, references=labels, average='micro')
 
         return {
             "accuracy": accuracy["accuracy"],
             "precision": precision["precision"],
             "recall": recall["recall"],
             "f1": f1["f1"],
-            "roc_auc": roc_auc["roc_auc"]
         }
 
         # return accuracy.compute(predictions=predictions, references=labels)
@@ -125,14 +122,17 @@ class TrainingEngine:
             model.config.pad_token_id = model.config.eos_token_id
         return tokenizer
 
-    def train(self):
+    def train(self, desired_total_data_n=None):
         logging_model_name = self.base_model_name.split("/")[-1]
         if self.base_model_name == FOX_BASE_GPU:
             logging_model_name = "FOX"
         wandb.init(project=f"{self.task_name} with {logging_model_name}")
         data_processor = DataProcessor(task_name=self.task_name)
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset()
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(desired_total_data_n=desired_total_data_n)
+        print(f"sample data = {dataset['train'][0]}")
+        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
+
         print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
