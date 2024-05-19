@@ -12,7 +12,6 @@ from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HAL
     CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME
 from training.data_processor import DataProcessor
 import evaluate
-import wandb
 from utils.file_operations import write_hf_dataset_to_csv
 
 # accuracy = evaluate.load("accuracy")
@@ -125,10 +124,6 @@ class TrainingEngine:
         return tokenizer
 
     def train(self, desired_total_data_n=None):
-        logging_model_name = self.base_model_name.split("/")[-1]
-        if self.base_model_name == FOX_BASE_GPU:
-            logging_model_name = "FOX"
-        wandb.init(project=f"{self.task_name} with {logging_model_name}")
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(desired_total_data_n=desired_total_data_n)
         print(f"sample data = {dataset['train'][0]}")

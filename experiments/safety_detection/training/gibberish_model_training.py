@@ -1,11 +1,12 @@
 from training.constants import GIBBERISH_TASK_NAME, FOX_BASE_GPU
 from training.trust_inference_engine import TrustInferenceEngine
 from training.training_engine import TrainingEngine
+import wandb
 import os
 import torch
 
 
-# os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 TASK_NAME = GIBBERISH_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
@@ -15,9 +16,8 @@ OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    config = {"metrics_average": "macro"}
-    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME, config=config)
-    # trainer.train(desired_total_data_n=100)
+    wandb.init(project=f"{GIBBERISH_TASK_NAME} with FOX")
+    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME, config={"metrics_average": "macro"})
     trainer.train()
     # text = "i'm happy hahaha"
 

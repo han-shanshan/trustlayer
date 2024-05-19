@@ -4,6 +4,7 @@ from training.training_engine import TrainingEngine
 import os
 import torch
 import json
+import wandb
 
 
 TASK_NAME = TOXICITY_TASK_NAME
@@ -21,10 +22,12 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 """
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-
-    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME)
+    wandb.init(project=f"{TASK_NAME} with FOX")
+    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME, config={"metrics_average": "macro"})
     trainer.train()
     # text = "i'm happy hahaha"
     #
