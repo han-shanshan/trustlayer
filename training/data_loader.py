@@ -1,5 +1,5 @@
 import os
-from datasets import load_dataset, DatasetDict, concatenate_datasets
+from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
 from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
@@ -12,22 +12,25 @@ class DataLoader:
     def load_data(self, task_name, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
         # None: return full dataset by default
         if task_name == TOPIC_TASK_NAME:
-            downloaded_dataset = load_dataset("cardiffnlp/tweet_topic_multi")
+            task_data = load_dataset("cardiffnlp/tweet_topic_multi")
         elif task_name == SEMANTIC_TASK_NAME:
-            downloaded_dataset = load_dataset("sem_eval_2018_task_1", "subtask5.english")
+            task_data = load_dataset("sem_eval_2018_task_1", "subtask5.english")
         elif task_name == GIBBERISH_TASK_NAME:
-            downloaded_dataset = self.load_gibberish_data()
+            task_data = self.load_gibberish_data()
         elif task_name == UNSAFE_PROMPT_TASK_NAME:
-            downloaded_dataset = self.load_unsafe_prompt_data()
+            task_data = self.load_unsafe_prompt_data()
         elif task_name == HALLUCINATION_TASK_NAME:
-            downloaded_dataset = self.load_hallucination_data()
+            task_data = self.load_hallucination_data()
         elif task_name == TOXICITY_TASK_NAME:
-            downloaded_dataset = self.load_toxicity_data(training_per=0.8, validation_per=0.1, test_per=0.1)
+            task_data = self.load_toxicity_data()
         else:
-            downloaded_dataset = None
-        print(f"-----task name = {task_name}------\n original dataset: {downloaded_dataset}")
+            task_data = None
+        print(f"-----task name = {task_name}------\n original dataset: {task_data}")
+
         # downloaded_dataset = downloaded_dataset.shuffle(seed=0)
-        return downloaded_dataset
+        split_dataset = self.shuffle_a_dataset_and_get_splitted(task_data, test_per, validation_per)
+        print(f"split data = {split_dataset}")
+        return split_dataset
 
         # if desired_total_data_n is None:  # return full dataset by default
         #     return downloaded_dataset
@@ -36,21 +39,14 @@ class DataLoader:
         # print(f"new dataset: {DatasetDict(small_dataset)}")
         # return small_dataset
 
-    # @staticmethod
-    # def get_a_small_dataset(downloaded_dataset, desired_total_data_num, test_per, training_per, validation_per):
-    #     for k in downloaded_dataset.keys():
-    #         if "train" in k:
-    #             if int(desired_total_data_num * training_per) < len(downloaded_dataset[k]):
-    #                 downloaded_dataset[k] = downloaded_dataset[k].select(
-    #                     range(int(desired_total_data_num * training_per)))
-    #         if "validation" in k:
-    #             if int(desired_total_data_num * validation_per) < len(downloaded_dataset[k]):
-    #                 downloaded_dataset[k] = downloaded_dataset[k].select(
-    #                     range(int(desired_total_data_num * validation_per)))
-    #         if "test" in k:
-    #             if int(desired_total_data_num * test_per) < len(downloaded_dataset[k]):
-    #                 downloaded_dataset[k] = downloaded_dataset[k].select(range(int(desired_total_data_num * test_per)))
-    #     return DatasetDict(downloaded_dataset)
+    # @staticmethod def get_a_small_dataset(downloaded_dataset, desired_total_data_num, test_per, training_per,
+    # validation_per): for k in downloaded_dataset.keys(): if "train" in k: if int(desired_total_data_num *
+    # training_per) < len(downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select( range(int(
+    # desired_total_data_num * training_per))) if "validation" in k: if int(desired_total_data_num * validation_per)
+    # < len(downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select( range(int(
+    # desired_total_data_num * validation_per))) if "test" in k: if int(desired_total_data_num * test_per) < len(
+    # downloaded_dataset[k]): downloaded_dataset[k] = downloaded_dataset[k].select(range(int(desired_total_data_num *
+    # test_per))) return DatasetDict(downloaded_dataset)
 
     @staticmethod
     def load_unsafe_prompt_data():
@@ -60,38 +56,63 @@ class DataLoader:
         dataset["test"] = test_validation_split["test"]
         return DatasetDict(dataset)
 
-    def load_toxicity_data(self, training_per=0.8, validation_per=0.1, test_per=0.1):
+    def load_toxicity_data(self):
         # # this error should have been fixed? TypeError: TextEncodeInput must be Union[TextInputSequence,
         # Tuple[InputSequence, InputSequence]]
         jigsaw_comment_dataset = self._load_jigsaw_comment_dataset()
         jigsaw_unindended_bias_data = self._load_jigsaw_unindended_bias_dataset()
         toxicity3M_dataset = self._load_toxicity_data_3M()
-        d1 = load_dataset("lmsys/toxic-chat", "toxicchat1123")
-        d2 = load_dataset("lmsys/toxic-chat", "toxicchat0124")
-        toxic_chat_data_subset1 = self._process_toxic_chat_subdata(d1)
-        toxic_chat_data_subset2 = self._process_toxic_chat_subdata(d2)
+        toxic_chat_data_subset1 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
+        toxic_chat_data_subset2 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
+
+        merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates([jigsaw_comment_dataset, jigsaw_unindended_bias_data,
+                                                                                        toxic_chat_data_subset1, toxic_chat_data_subset2,
+                                                                                        toxicity3M_dataset])
+        return merged_dataset
+
+    @staticmethod
+    def merge_datasets_of_different_phases_and_remove_duplicates(dataset_list: list):
         merged_dataset = None
-        for D in [jigsaw_comment_dataset, jigsaw_unindended_bias_data, toxicity3M_dataset,
-                  toxic_chat_data_subset1, toxic_chat_data_subset2]:
+        for D in dataset_list:
             for split in D.keys():
                 if merged_dataset is None:
                     merged_dataset = D[split]
                 else:
                     merged_dataset = concatenate_datasets([merged_dataset, D[split]])
+        print(f"merge data: {merged_dataset}")
+        dataset_dicts = merged_dataset.to_dict()
+        unique_texts = {}
+        for i, (text, label) in enumerate(zip(dataset_dicts["text"], dataset_dicts["label"])):
+            if text is not None:
+                text = text.strip()
+                if text in unique_texts:
+                    if unique_texts[text] is not None and unique_texts[text] != label:
+                        unique_texts[text] = None  # mark conflicts
+                        # print(f"conflict founded ---------")
+                else:
+                    unique_texts[text] = label
+
+        transformed_data = {
+            "text": list(unique_texts.keys()),
+            "label": list(unique_texts.values())
+        }
+        merged_datasets_without_duplicates = Dataset.from_dict(transformed_data)
+        return merged_datasets_without_duplicates
+
+    @staticmethod
+    def shuffle_a_dataset_and_get_splitted(merged_dataset, test_per, validation_per):
         merged_dataset = merged_dataset.shuffle(seed=0)
-        train_testval_split = merged_dataset.train_test_split(test_size=test_per+validation_per)
+        train_testval_split = merged_dataset.train_test_split(test_size=test_per + validation_per)
         train_dataset = train_testval_split['train']
         testval_dataset = train_testval_split['test']
-        test_validation_split = testval_dataset.train_test_split(test_size=test_per/(test_per + validation_per))
+        test_validation_split = testval_dataset.train_test_split(test_size=test_per / (test_per + validation_per))
         test_dataset = test_validation_split['test']
         validation_dataset = test_validation_split['train']
-
         split_dataset = DatasetDict({
             'train': train_dataset,
             'test': test_dataset,
             'validation': validation_dataset
         })
-
         return split_dataset
 
     @staticmethod
@@ -146,7 +167,7 @@ class DataLoader:
         # filtered_dataset = jigsaw_unindended_bias_data.filter(filter_toxicity_annotator_count)
         # ######################################
 
-        def create_label_for_jigsaw_jigsaw_unindended_bias_dataset(example):
+        def create_label_for_jigsaw_unindended_bias_dataset(example):
             example['label'] = 1 if (any([example[col] > 0.5 for col in
                                           ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
                                            'identity_attack', 'insult', 'threat']])
@@ -154,8 +175,7 @@ class DataLoader:
                                      ) else 0
             return example
 
-        jigsaw_unindended_bias_data = jigsaw_unindended_bias_data.map(
-            create_label_for_jigsaw_jigsaw_unindended_bias_dataset)
+        jigsaw_unindended_bias_data = jigsaw_unindended_bias_data.map(create_label_for_jigsaw_unindended_bias_dataset)
         jigsaw_unindended_bias_data = jigsaw_unindended_bias_data.rename_column('comment_text', 'text')
         jigsaw_unindended_bias_data = jigsaw_unindended_bias_data.remove_columns([item for item in
                                                                                   jigsaw_unindended_bias_data[
@@ -205,9 +225,83 @@ class DataLoader:
         return dataset
 
     def load_gibberish_data(self):
-        # dataset = load_dataset("imdb")
-        dataset = load_dataset("Sowmya15/March06_gibberish")
-        return self.filter_non_records(dataset, "text")
+        # "0": "clean",    "1": "noise",     "2": "word salad"
+        gibberish_dataset_names = ["Sowmya15/March06_gibberish",  # tag: 0, 1, 2
+                                   "Sowmya15/gibberish_april2",  # tag: 0, 1
+                                   "Sowmya15/March11_gibberish",  # tag: 0, 1
+                                   ]
+        gibberish_datasets = []
+        # Dataset "Sowmya15/gibberish_march22" has to be loaded manually; tag: 0, 1, 2;
+        gibberish_march22_dataset = self._load_gibberish_mar22_manually()
+        gibberish_datasets.append(gibberish_march22_dataset)
+        gibberish_datasets.append(self._load_multilingual_gibberish_data())
+
+        for dataset_name in gibberish_dataset_names:
+            data = self.filter_non_records(load_dataset(dataset_name), "text")
+            print(f"{dataset_name} dataset: {data}; \n sample data for {dataset_name}: {data['train'][0]}")
+            gibberish_datasets.append(data)
+
+        non_gibberish_data = self._load_data_and_set_fixed_lables(dataset_id="iohadrubin/not-gibberish-20-56-22",
+                                                                  label_value=0, removed_column=['file_loc', 'id'])
+        # not quite sure about the following dataset; the text is too long  # todo: may remove in later training
+        word_salad_data = self._load_data_and_set_fixed_lables(dataset_id="iohadrubin/gibberish-47-15-08",
+                                                               label_value=2, removed_column=['file_loc', 'id'])
+
+        print(f"non_gibberish_data example data: {non_gibberish_data['train'][0]}")
+        print(f"non_gibberish_data: {non_gibberish_data}")
+        print(f"word_salad_data example data: {word_salad_data['train'][0]}")
+        print(f"word_salad_data: {word_salad_data}")
+        gibberish_datasets.append(non_gibberish_data)
+        gibberish_datasets.append(word_salad_data)
+
+        merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates(gibberish_datasets)
+        return merged_dataset
+
+    @staticmethod
+    def _load_multilingual_gibberish_data():
+        multilingual_gibberish_data = load_dataset("Sowmya15/profanity_multi_march25")
+        print(f"original multilingual data = {multilingual_gibberish_data}")
+        multilingual_gibberish_data = multilingual_gibberish_data.filter(
+            lambda example: example['language'] == "English")
+        multilingual_gibberish_data = multilingual_gibberish_data.remove_columns(["language"])
+        print(f"multilingual data after filtering and removing cols= {multilingual_gibberish_data}")
+        return multilingual_gibberish_data
+
+    @staticmethod
+    def _load_data_and_set_fixed_lables(dataset_id, label_value, removed_column: list = None):
+        data = load_dataset(dataset_id)
+
+        def add_label(example):
+            example['label'] = label_value
+            return example
+        data = data.map(add_label)
+        return data.remove_columns(removed_column)
+
+    def _load_gibberish_mar22_manually(self):
+        gibberish_mar22_training_dataset = self._read_gibberish_march22_from_csv(file_name='train.csv')['train']
+
+        def remove_unwanted_column(example):
+            if 'Unnamed: 0' in example:
+                del example['Unnamed: 0']
+            return example
+
+        gibberish_mar22_training_dataset = gibberish_mar22_training_dataset.map(remove_unwanted_column, batched=True)
+        gibberish_march22_dataset = DatasetDict({
+            'train': gibberish_mar22_training_dataset,
+            'test': self._read_gibberish_march22_from_csv(file_name='test.csv')['train'],
+            'validation': self._read_gibberish_march22_from_csv(file_name='validation.csv')['train']
+        })
+        gibberish_march22_dataset = self.filter_non_records(gibberish_march22_dataset, "text")
+        print(f"gibberish_march22_dataset={gibberish_march22_dataset}")
+        print(f"gibberish_march22_dataset sample={gibberish_march22_dataset['train'][0]}")
+        return gibberish_march22_dataset
+
+    @staticmethod
+    def _read_gibberish_march22_from_csv(file_name):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
+                                     'gibberish_mar22', file_name)
+        return DataReader.read_csv_file_data(csv_file_path=csv_file_path)
 
     @staticmethod
     def filter_non_records(dataset, col_name):
@@ -223,5 +317,5 @@ class DataLoader:
 
 if __name__ == '__main__':
     # desired_total_data_n = 10000
-    # dataset = DataLoader().load_data(TOXICITY_TASK_NAME, desired_total_data_n=None)
-    DataLoader().load_toxicity_data()
+    dataset = DataLoader().load_data(TOXICITY_TASK_NAME)
+    # DataLoader().load_data(task_name=GIBBERISH_TASK_NAME)
