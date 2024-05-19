@@ -28,6 +28,7 @@ class TrainingConfigManager:
                 warmup_ratio=0.03,  # warmup ratio based on QLoRA paper
                 lr_scheduler_type="linear",
                 report_to=["wandb"],
+                load_best_model_at_end = True
             )
 
         return TrainingArguments(

@@ -126,7 +126,10 @@ class TrainingEngine:
         return tokenizer
 
     def train(self):
-        wandb.init(project=f"{self.task_name} with {self.base_model_name}")
+        logging_model_name = self.base_model_name.split("/")[-1]
+        if self.base_model_name == FOX_BASE_GPU:
+            logging_model_name = "FOX"
+        wandb.init(project=f"{self.task_name} with {logging_model_name}")
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset()
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
