@@ -55,6 +55,9 @@ class TrainingEngine:
         self.label_metrics = None
         self.set_label_metrics()
         self.config = config
+        self.metrics_average = 'micro'
+        if self.config is not None and "metrics_average" in self.config:
+            self.metrics_average = self.config["metrics_average"]
 
     def set_task_type(self, task_name):
         self.task_name = task_name
@@ -74,15 +77,14 @@ class TrainingEngine:
             labels=p.label_ids)
         return result
 
-    @staticmethod
-    def compute_metrics_for_single_label_tasks(eval_pred):
+    def compute_metrics_for_single_label_tasks(self, eval_pred):
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=1)
 
         accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
-        precision = precision_metric.compute(predictions=predictions, references=labels, average='micro')
-        recall = recall_metric.compute(predictions=predictions, references=labels, average='micro')
-        f1 = f1_metric.compute(predictions=predictions, references=labels, average='micro')
+        precision = precision_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
+        recall = recall_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
+        f1 = f1_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
 
         return {
             "accuracy": accuracy["accuracy"],

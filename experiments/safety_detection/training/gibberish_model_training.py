@@ -15,7 +15,8 @@ OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME)
+    config = {"metrics_average": "macro"}
+    trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME, config=config)
     # trainer.train(desired_total_data_n=100)
     trainer.train()
     # text = "i'm happy hahaha"
