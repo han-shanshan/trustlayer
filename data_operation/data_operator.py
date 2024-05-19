@@ -156,8 +156,8 @@ class DataOperator:
             return None
         question = q_and_a[0].replace(qa_identifiers["Q"], "")
         answer = q_and_a[1].strip()
-        print(f"q = {question}")
-        print(f"a = {answer}")
+        # print(f"q = {question}")
+        # print(f"a = {answer}")
         return self._generate_summarizations_for_a_list([question, answer])
 
     def _extract_q_idx_for_a_qa_string(self, qa, qa_identifiers=None):

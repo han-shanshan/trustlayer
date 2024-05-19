@@ -234,8 +234,8 @@ if __name__ == '__main__':
     https://huggingface.co/datasets/avaliev/chat_doctor?row=0
     e-commercial dataset: https://huggingface.co/datasets/qgyd2021/e_commerce_customer_service?row=33
     """
-    dataset_name = AI_MEDICAL_CHAT_DATASET
-    exp_indexing_q_rephrased_queries(dataset_name, total_query_num=50)
+    dataset_name = E_COMMERCE_DATASET
+    # exp_indexing_q_rephrased_queries(dataset_name, total_query_num=50)
     # exp_indexing_q_original_queries(dataset_name, total_query_num=50)
     # exp_indexing_whole_message_rephrased_queries(dataset_name, total_query_num=50)
-    # exp_indexing_whole_message_original_queries(dataset_name, total_query_num=50)
+    exp_indexing_whole_message_original_queries(dataset_name, total_query_num=50)

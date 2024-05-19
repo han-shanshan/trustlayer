@@ -133,6 +133,7 @@ class TrainingEngine:
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset()
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
+        print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 

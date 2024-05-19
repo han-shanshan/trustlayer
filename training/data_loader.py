@@ -97,6 +97,7 @@ class DataLoader:
             "label": list(unique_texts.values())
         }
         merged_datasets_without_duplicates = Dataset.from_dict(transformed_data)
+        merged_datasets_without_duplicates = merged_datasets_without_duplicates.filter(lambda example: example['label'] is not None)
         return merged_datasets_without_duplicates
 
     @staticmethod
@@ -238,7 +239,7 @@ class DataLoader:
 
         for dataset_name in gibberish_dataset_names:
             data = self.filter_non_records(load_dataset(dataset_name), "text")
-            # print(f"{dataset_name} dataset: {data}; \n sample data for {dataset_name}: {data['train'][0]}")
+            print(f"{dataset_name} dataset: {data}; \n sample data for {dataset_name}: {data['train'][0]}")
             gibberish_datasets.append(data)
 
         non_gibberish_data = self._load_data_and_set_fixed_lables(dataset_id="iohadrubin/not-gibberish-20-56-22",
