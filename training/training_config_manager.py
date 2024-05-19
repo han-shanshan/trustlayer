@@ -11,22 +11,23 @@ class TrainingConfigManager:
 
     def get_training_config(self, output_dir, batch_size=8):
         if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
-            num_train_epochs = 20
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
-                num_train_epochs=num_train_epochs,  # number of training epochs
-                per_device_train_batch_size=3,  # batch size per device during training
+                num_train_epochs=20,  # number of training epochs
+                per_device_train_batch_size=8,  # batch size per device during training
                 gradient_accumulation_steps=2,  # number of steps before performing a backward/update pass
                 gradient_checkpointing=True,  # use gradient checkpointing to save memory
                 optim="adamw_torch_fused",  # use fused adamw optimizer
-                # logging_steps=10,  # log every 10 steps
+                logging_steps=10,  # log every 10 steps
                 save_strategy="epoch",  # save checkpoint every epoch
-                learning_rate=2e-4,  # learning rate, based on QLoRA paper
+                evaluation_strategy="epoch",
+                learning_rate=5e-5,  # learning rate, based on QLoRA paper
                 bf16=True,  # use bfloat16 precision
                 tf32=True,  # use tf32 precision
                 max_grad_norm=0.3,  # max gradient norm based on QLoRA paper
                 warmup_ratio=0.03,  # warmup ratio based on QLoRA paper
-                lr_scheduler_type="constant",  # use constant learning rate scheduler
+                lr_scheduler_type="linear",
+                report_to=["wandb"],
             )
 
         return TrainingArguments(

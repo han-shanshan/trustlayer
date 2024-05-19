@@ -1,5 +1,7 @@
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from datasets import load_metric
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, EarlyStoppingCallback, TrainerCallback, \
+    TrainerState, TrainerControl
 from transformers import Trainer
 from peft import get_peft_model
 import torch
@@ -10,8 +12,14 @@ from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HAL
     CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME
 from training.data_processor import DataProcessor
 import evaluate
+import wandb
 
-accuracy = evaluate.load("accuracy")
+# accuracy = evaluate.load("accuracy")
+accuracy_metric = load_metric("accuracy")
+precision_metric = load_metric("precision")
+recall_metric = load_metric("recall")
+f1_metric = load_metric("f1")
+roc_auc_metric = load_metric("roc_auc")
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
@@ -32,6 +40,11 @@ def multi_label_metrics(predictions, labels, threshold=0.5):
                'roc_auc': roc_auc,
                'accuracy': accuracy}
     return metrics
+
+
+class CustomCallback(TrainerCallback):
+    def on_epoch_end(self, args, state: TrainerState, control: TrainerControl, **kwargs):
+        print(f"Epoch {state.epoch} ended. Custom logic here.")
 
 
 class TrainingEngine:
@@ -62,9 +75,26 @@ class TrainingEngine:
 
     @staticmethod
     def compute_metrics_for_single_label_tasks(eval_pred):
-        predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=1)
-        return accuracy.compute(predictions=predictions, references=labels)
+        logits, labels = eval_pred
+        predictions = np.argmax(logits, axis=1)
+
+        accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
+        precision = precision_metric.compute(predictions=predictions, references=labels)
+        recall = recall_metric.compute(predictions=predictions, references=labels)
+        f1 = f1_metric.compute(predictions=predictions, references=labels)
+
+        probabilities = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+        roc_auc = roc_auc_metric.compute(prediction_scores=probabilities, references=labels)
+
+        return {
+            "accuracy": accuracy["accuracy"],
+            "precision": precision["precision"],
+            "recall": recall["recall"],
+            "f1": f1["f1"],
+            "roc_auc": roc_auc["roc_auc"]
+        }
+
+        # return accuracy.compute(predictions=predictions, references=labels)
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
@@ -96,6 +126,7 @@ class TrainingEngine:
         return tokenizer
 
     def train(self):
+        wandb.init(project=f"{self.task_name} with {self.base_model_name}")
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset()
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
@@ -112,12 +143,15 @@ class TrainingEngine:
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
         output_dir = self.base_model_name.split("/")[1] + "-" + self.task_name
 
-        bert_peft_trainer = Trainer(
+        peft_trainer = Trainer(
             model=model,
             args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
         )
-        bert_peft_trainer.train()
+        peft_trainer.train()
+        test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
+        print("Test Results:", test_results)
         model.save_pretrained(output_dir + "-final")
