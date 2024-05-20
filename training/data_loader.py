@@ -92,13 +92,32 @@ class DataLoader:
         bias_data = bias_data.remove_columns([item for item in bias_data["train"].column_names
                                               if
                                               item not in ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
-                                                           'identity_attack', 'insult', 'threat',
+                                                           'identity_attack', 'insult', 'threat', 'sexual_explicit',
                                                            'toxicity_annotator_count',
                                                            'comment_text']])
         merged_dataset = self._merge_several_datasets_of_different_phases([bias_data])
+        filtered_jigsawdata = self._jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset)
+        dataset = Dataset.from_pandas(filtered_jigsawdata).rename_column('comment_text', 'text')
+        dataset = self.filter_a_split_of_hf_dataset(dataset, "text")
+
+        def create_label_based_on_columns(example):
+            sum_score = example['toxicity'] + example['severe_toxicity'] + example['obscene'] + example['sexual_explicit'] \
+                  + example['identity_attack'] + example['insult'] + example['threat']
+            example['label'] = 0
+            if (sum_score >= 0.5 and example['toxicity_annotator_count'] > 20) \
+                    or (0.3 < sum_score < 0.5 and 30 <= example['toxicity_annotator_count'] <= 100) \
+                    or 50 < example['toxicity_annotator_count'] <= 100\
+                    or (sum_score >= 0.5 and (example['text'].contains('Trump'))):
+                example['label'] = 1
+            return example
+
+        dataset = dataset.map(create_label_based_on_columns)
+        return dataset
+
+    @staticmethod
+    def _jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset, key_column ="comment_text"):
         df = merged_dataset.to_pandas()
         df = df.drop_duplicates()
-        key_column = "comment_text"
         duplicate_keys = df[df.duplicated(subset=[key_column], keep=False)]
         grouped = duplicate_keys.groupby(key_column)
         non_duplicate_keys_df = df.drop_duplicates(subset=[key_column], keep=False)
@@ -106,7 +125,6 @@ class DataLoader:
         deleted_record_counter = 0
         for key, group in grouped:
             avg_record = {key_column: key}
-
             for column in group.columns:
                 if column != key_column:
                     unique_values = group[column].unique()
@@ -121,12 +139,8 @@ class DataLoader:
                 else:
                     deleted_record_counter += len(group[column])
             merged_records.append(avg_record)
-
         avg_records_df = pd.DataFrame(merged_records)
-        combined_df = pd.concat([non_duplicate_keys_df, avg_records_df], ignore_index=True)
-        dataset = Dataset.from_pandas(combined_df).rename_column('comment_text', 'text')
-        dataset = self.filter_a_split_of_hf_dataset(dataset, "text")
-        return dataset
+        return pd.concat([non_duplicate_keys_df, avg_records_df], ignore_index=True)
 
     def merge_datasets_of_different_phases_and_remove_duplicates(self, dataset_list: list):
         merged_dataset = self._merge_several_datasets_of_different_phases(dataset_list)
