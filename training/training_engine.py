@@ -121,14 +121,16 @@ class TrainingEngine:
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
-                              TOXICITY_TASK_NAME, CUSTOMIZED_HALLUCINATION_TASK_NAME]:
+                              CUSTOMIZED_HALLUCINATION_TASK_NAME] \
+                or (self.task_name == TOXICITY_TASK_NAME and self.dataset_type is None):
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,
                                                                       label2id=label2id,
                                                                       load_in_8bit=False
                                                                       )
-        elif self.task_name in [SEMANTIC_TASK_NAME, TOPIC_TASK_NAME]:
+        elif self.task_name in [SEMANTIC_TASK_NAME, TOPIC_TASK_NAME] \
+                or (self.task_name == TOXICITY_TASK_NAME and self.dataset_type is not None):
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       problem_type="multi_label_classification",
                                                                       num_labels=len(label_dicts),
@@ -170,14 +172,23 @@ class TrainingEngine:
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
         output_dir = self.base_model_name.split("/")[1] + "-" + self.task_name
 
-        peft_trainer = Trainer(
-            model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
-            train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
-            eval_dataset=encoded_dataset["validation"],
-            compute_metrics=self.label_metrics,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
-        )
+        if self.dataset_type is None:
+            peft_trainer = Trainer(
+                model=model,
+                args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
+                train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
+                eval_dataset=encoded_dataset["validation"],
+                compute_metrics=self.label_metrics,
+                callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
+            )
+        else:
+            peft_trainer = Trainer(
+                model=model,
+                args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
+                train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
+                eval_dataset=encoded_dataset["validation"],
+                callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
+            )
         peft_trainer.train()
         if self.dataset_type is None:
             test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
