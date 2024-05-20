@@ -94,7 +94,7 @@ class DataProcessor:
                                remove_columns=self.get_remove_column_names(dataset))
 
     def get_dataset(self, desired_total_data_n=None, dataset_type=None, training_per=0.8, validation_per=0.1, test_per=0.1):
-        dataset = DataLoader().load_data(task_name=self.task_name, dataset_type=None, desired_total_data_n=desired_total_data_n,
+        dataset = DataLoader().load_data(task_name=self.task_name, dataset_type=dataset_type, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")

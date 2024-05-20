@@ -124,7 +124,9 @@ class DataLoader:
 
         avg_records_df = pd.DataFrame(merged_records)
         combined_df = pd.concat([non_duplicate_keys_df, avg_records_df], ignore_index=True)
-        return Dataset.from_pandas(combined_df).rename_column('comment_text', 'text')
+        dataset = Dataset.from_pandas(combined_df).rename_column('comment_text', 'text')
+        dataset = self.filter_a_split_of_hf_dataset(dataset, "text")
+        return dataset
 
     def merge_datasets_of_different_phases_and_remove_duplicates(self, dataset_list: list):
         merged_dataset = self._merge_several_datasets_of_different_phases(dataset_list)
@@ -369,23 +371,16 @@ class DataLoader:
                                      'gibberish_mar22', file_name)
         return DataReader.read_csv_file_data(csv_file_path=csv_file_path)
 
-    @staticmethod
-    def filter_non_records(dataset, col_name):
+    def filter_non_records(self, dataset, col_name):
         filtered_dataset = {}
         for phase in dataset.keys():
-            filtered_dataset_in_phase = dataset[phase].filter(lambda example: example[col_name] is not None)
+            filtered_dataset_in_phase = self.filter_a_split_of_hf_dataset(dataset[phase], col_name)
             filtered_dataset[phase] = filtered_dataset_in_phase
         # def change_labels(example):
         #     example['label'] = np.argmax(example['label'])
         # filtered_dataset = DatasetDict(filtered_dataset).map(change_labels)
         return DatasetDict(filtered_dataset)
 
-
-if __name__ == '__main__':
-    # desired_total_data_n = 10000
-    # dataset = DataLoader().load_data(TOXICITY_TASK_NAME)
-    # DataLoader().load_data(task_name=GIBBERISH_TASK_NAME)
-    # DataLoader()._load_toxicity_data_3M()
-    data = DataLoader().load_toxic_sophisticated_data()
-    print(data)
-    print(f"sample = {data[0]}")
+    @staticmethod
+    def filter_a_split_of_hf_dataset(dataset_phase, col_name):
+        return dataset_phase.filter(lambda example: example[col_name] is not None)
