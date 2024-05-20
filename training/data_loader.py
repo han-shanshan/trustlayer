@@ -107,7 +107,7 @@ class DataLoader:
             if (sum_score >= 0.5 and example['toxicity_annotator_count'] > 20) \
                     or (0.3 < sum_score < 0.5 and 30 <= example['toxicity_annotator_count'] <= 100) \
                     or 50 < example['toxicity_annotator_count'] <= 100\
-                    or (sum_score >= 0.5 and (example['text'].contains('Trump'))):
+                    or (sum_score >= 0.5 and ('Trump' in example['text'])):
                 example['label'] = 1
             return example
 

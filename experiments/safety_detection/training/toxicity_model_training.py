@@ -24,25 +24,6 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
-
-def predict_scores(text):
-    label_names = ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
-                              'identity_attack', 'insult', 'threat', 'toxicity_annotator_count']
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-
-    # Get model predictions
-    outputs = model(**inputs)
-    logits = outputs.logits
-
-    # Apply sigmoid to get probabilities
-    probabilities = torch.sigmoid(logits).detach().cpu().numpy()[0]
-
-    # Map probabilities to label names
-    scores = {label_names[i]: probabilities[i] for i in range(len(label_names))}
-
-    return scores
-
-
 # # Example usage
 # text = "He got his money... now he lies in wait till after the election in 2 yrs.... dirty politicians need to be afraid of Tar and feathers again... but they aren't and so the people get screwed."
 # scores = predict_scores(text)
@@ -50,10 +31,10 @@ def predict_scores(text):
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    wandb.init(project=f"{TASK_NAME} with FOX")
+    # wandb.init(project=f"{TASK_NAME} with FOX")
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
                              config={"metrics_average": "macro", "dataset_type": "sophisticated"})
-    trainer.train()
+    trainer.train(desired_total_data_n=100)
     # text = "i'm happy hahaha"
     #
     # inference_engine = InferenceEngine(default_task=TASK_NAME)

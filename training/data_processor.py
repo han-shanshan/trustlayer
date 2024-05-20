@@ -114,15 +114,7 @@ class DataProcessor:
         if self.task_name == TOPIC_TASK_NAME:  # todo: move to data loader
             encoded_dataset = self.concatenate_dataset_of_same_phase(encoded_dataset)
         final_dataset = DatasetDict(encoded_dataset)
-        label_names_to_predict = ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
-                                  'identity_attack', 'insult', 'threat', 'toxicity_annotator_count']
-        flag = all(value in dataset["train"].column_names for value in label_names_to_predict)
-        print(f"flag = {flag} and label_names_to_predict = {label_names_to_predict}")
-        if self.task_name == TOXICITY_TASK_NAME and flag:
-            final_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'] + label_names_to_predict)
-        else:
-            final_dataset.set_format("torch")
-
+        final_dataset.set_format("torch")
         return final_dataset
 
     @staticmethod
