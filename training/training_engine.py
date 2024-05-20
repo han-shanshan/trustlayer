@@ -13,6 +13,7 @@ from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HAL
 from training.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -20,6 +21,26 @@ precision_metric = load_metric("precision")
 recall_metric = load_metric("recall")
 f1_metric = load_metric("f1")
 roc_auc_metric = load_metric("roc_auc")
+
+
+def evaluate_model(trainer, test_dataset, label_names):
+    # Get predictions and true labels
+    predictions = trainer.predict(test_dataset)
+    preds = torch.sigmoid(torch.Tensor(predictions.predictions)).numpy()
+    labels = predictions.label_ids
+    metrics = {}
+
+    for i, label in enumerate(label_names):
+        mse = mean_squared_error(labels[:, i], preds[:, i])
+        mae = mean_absolute_error(labels[:, i], preds[:, i])
+        r2 = r2_score(labels[:, i], preds[:, i])
+
+        metrics[label] = {
+            'mse': mse,
+            'mae': mae,
+            'r2': r2
+        }
+    return metrics
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
@@ -55,8 +76,12 @@ class TrainingEngine:
         self.set_label_metrics()
         self.config = config
         self.metrics_average = 'micro'
-        if self.config is not None and "metrics_average" in self.config:
-            self.metrics_average = self.config["metrics_average"]
+        self.dataset_type = None
+        if self.config is not None:
+            if "metrics_average" in self.config:
+                self.metrics_average = self.config["metrics_average"]
+            if "dataset_type" in self.config:
+                self.dataset_type = self.config["dataset_type"]
 
     def set_task_type(self, task_name):
         self.task_name = task_name
@@ -125,7 +150,8 @@ class TrainingEngine:
 
     def train(self, desired_total_data_n=None):
         data_processor = DataProcessor(task_name=self.task_name)
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(desired_total_data_n=desired_total_data_n)
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_type=self.dataset_type,
+                                                                                desired_total_data_n=desired_total_data_n)
         print(f"sample data = {dataset['train'][0]}")
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
@@ -153,6 +179,14 @@ class TrainingEngine:
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
         )
         peft_trainer.train()
-        test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
-        print("Test Results:", test_results)
+        if self.dataset_type is None:
+            test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
+            print("Test Results:", test_results)
+        else:
+            metrics = evaluate_model(peft_trainer, encoded_dataset['test'])
+            for label, metric in metrics.items():
+                print(f"Metrics for {label}:")
+                print(f"  MSE: {metric['mse']}")
+                print(f"  MAE: {metric['mae']}")
+                print(f"  R²: {metric['r2']}")
         model.save_pretrained(output_dir + "-final")

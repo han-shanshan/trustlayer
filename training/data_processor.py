@@ -50,7 +50,12 @@ class DataProcessor:
         elif self.task_name is HALLUCINATION_TASK_NAME:
             return ['valid', 'hallucination', 'irrelevant']
         elif self.task_name is TOXICITY_TASK_NAME:
-            return ['non-toxic', 'toxic']
+            label_names_to_predict = ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
+                                      'identity_attack', 'insult', 'threat', 'toxicity_annotator_count']
+            if all(value in dataset["train"].column_names for value in label_names_to_predict):
+                return label_names_to_predict
+            else:
+                return ['non-toxic', 'toxic']
         elif self.task_name is TOPIC_TASK_NAME: # todo: check the dataset in details
             """ 
             DatasetDict({
@@ -88,8 +93,8 @@ class DataProcessor:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
-    def get_dataset(self, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
-        dataset = DataLoader().load_data(task_name=self.task_name, desired_total_data_n=desired_total_data_n,
+    def get_dataset(self, desired_total_data_n=None, dataset_type=None, training_per=0.8, validation_per=0.1, test_per=0.1):
+        dataset = DataLoader().load_data(task_name=self.task_name, dataset_type=None, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")
@@ -108,9 +113,16 @@ class DataProcessor:
         encoded_dataset = self.encoding(dataset)
         if self.task_name == TOPIC_TASK_NAME:  # todo: move to data loader
             encoded_dataset = self.concatenate_dataset_of_same_phase(encoded_dataset)
-
         final_dataset = DatasetDict(encoded_dataset)
-        final_dataset.set_format("torch")
+        label_names_to_predict = ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
+                                  'identity_attack', 'insult', 'threat', 'toxicity_annotator_count']
+        flag = all(value in dataset["train"].column_names for value in label_names_to_predict)
+        print(f"flag = {flag} and label_names_to_predict = {label_names_to_predict}")
+        if self.task_name == TOXICITY_TASK_NAME and flag:
+            final_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'] + label_names_to_predict)
+        else:
+            final_dataset.set_format("torch")
+
         return final_dataset
 
     @staticmethod
@@ -166,7 +178,7 @@ class DataProcessor:
         return encoding
 
     def process_single_label_classification_data(self, examples):
-        return self.tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128,
+        return self.tokenizer(examples["text"], padding="max_length", truncation=True, max_length=516,
                               return_tensors="pt")
 
     def process_hallucination_data(self, examples):

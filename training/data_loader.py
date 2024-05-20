@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import pandas as pd
 from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
 from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
@@ -16,7 +18,8 @@ class DataLoader:
     def __init__(self):
         pass
 
-    def load_data(self, task_name, desired_total_data_n=None, training_per=0.8, validation_per=0.1, test_per=0.1):
+    def load_data(self, task_name, dataset_type=None, desired_total_data_n=None, training_per=0.8, validation_per=0.1,
+                  test_per=0.1):
         # None: return full dataset by default
         if task_name == TOPIC_TASK_NAME:
             task_data = load_dataset("cardiffnlp/tweet_topic_multi")
@@ -29,7 +32,10 @@ class DataLoader:
         elif task_name == HALLUCINATION_TASK_NAME:
             task_data = self.load_hallucination_data()
         elif task_name == TOXICITY_TASK_NAME:
-            task_data = self.load_toxicity_data()
+            if dataset_type is None:
+                task_data = self.load_toxicity_data()  # default
+            else:
+                task_data = self.load_toxic_sophisticated_data()
         else:
             task_data = None
         print(f"-----task name = {task_name}------\n original dataset: {task_data}")
@@ -81,16 +87,47 @@ class DataLoader:
              toxicity3M_dataset])
         return merged_dataset
 
-    @staticmethod
-    def merge_datasets_of_different_phases_and_remove_duplicates(dataset_list: list):
-        merged_dataset = None
-        for D in dataset_list:
-            for split in D.keys():
-                if merged_dataset is None:
-                    merged_dataset = D[split]
+    def load_toxic_sophisticated_data(self):
+        bias_data = self._load_original_jigsaw_unindended_bias_dataset()
+        bias_data = bias_data.remove_columns([item for item in bias_data["train"].column_names
+                                              if
+                                              item not in ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
+                                                           'identity_attack', 'insult', 'threat',
+                                                           'toxicity_annotator_count',
+                                                           'comment_text']])
+        merged_dataset = self._merge_several_datasets_of_different_phases([bias_data])
+        df = merged_dataset.to_pandas()
+        df = df.drop_duplicates()
+        key_column = "comment_text"
+        duplicate_keys = df[df.duplicated(subset=[key_column], keep=False)]
+        grouped = duplicate_keys.groupby(key_column)
+        non_duplicate_keys_df = df.drop_duplicates(subset=[key_column], keep=False)
+        merged_records = []
+        deleted_record_counter = 0
+        for key, group in grouped:
+            avg_record = {key_column: key}
+
+            for column in group.columns:
+                if column != key_column:
+                    unique_values = group[column].unique()
+                    if len(unique_values) == 1:
+                        avg_record[column] = unique_values[0]  # all values are the same, keep the original value
+                    else:
+                        # values are different, compute the average for numeric columns
+                        if np.issubdtype(group[column].dtype, np.number):
+                            avg_record[column] = group[column].mean()
+                        else:
+                            print("errors!")  # merged_record[column] = ', '.join(map(str, unique_values))
                 else:
-                    merged_dataset = concatenate_datasets([merged_dataset, D[split]])
-        print(f"merge data: {merged_dataset}")
+                    deleted_record_counter += len(group[column])
+            merged_records.append(avg_record)
+
+        avg_records_df = pd.DataFrame(merged_records)
+        combined_df = pd.concat([non_duplicate_keys_df, avg_records_df], ignore_index=True)
+        return Dataset.from_pandas(combined_df).rename_column('comment_text', 'text')
+
+    def merge_datasets_of_different_phases_and_remove_duplicates(self, dataset_list: list):
+        merged_dataset = self._merge_several_datasets_of_different_phases(dataset_list)
         dataset_dicts = merged_dataset.to_dict()
         unique_texts = {}
         for i, (text, label) in enumerate(zip(dataset_dicts["text"], dataset_dicts["label"])):
@@ -111,6 +148,19 @@ class DataLoader:
         merged_datasets_without_duplicates = merged_datasets_without_duplicates.filter(
             lambda example: example['label'] is not None)
         return merged_datasets_without_duplicates
+
+    @staticmethod
+    def _merge_several_datasets_of_different_phases(dataset_list):
+        merged_dataset = None
+        for D in dataset_list:
+            for split in D.keys():
+                if merged_dataset is None:
+                    merged_dataset = D[split]
+                else:
+                    merged_dataset = concatenate_datasets([merged_dataset, D[split]])
+        # print(f"merge data: {merged_dataset}")
+
+        return merged_dataset
 
     @staticmethod
     def shuffle_a_dataset_and_get_splitted(merged_dataset, test_per, validation_per):
@@ -156,20 +206,22 @@ class DataLoader:
         return jigsaw_comment_dataset
 
     @staticmethod
-    def _load_jigsaw_unindended_bias_dataset():
+    def _load_original_jigsaw_unindended_bias_dataset():
         dir_path = os.path.dirname(os.path.realpath(__file__))
         """
-            DatasetDict({
-                train: Dataset({
-                    features: ['id', 'comment_text', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'],
-                    num_rows: 159571
+                DatasetDict({
+                    train: Dataset({
+                        features: ['id', 'comment_text', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'],
+                        num_rows: 159571
+                    })
                 })
-            })
-            """
+                """
         csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
                                      'jigsaw-unintended-bias-in-toxicity-classification', 'all_data.csv')
-        jigsaw_unindended_bias_data = DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
+        return DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
 
+    def _load_jigsaw_unindended_bias_dataset(self):
+        jigsaw_unindended_bias_data = self._load_original_jigsaw_unindended_bias_dataset()
         # ######### testing ##################
         # def filter_toxicity_annotator_count(example):
         #     return (30 < example['toxicity_annotator_count'] < 50) and all(
@@ -179,7 +231,6 @@ class DataLoader:
         #     )
         # filtered_dataset = jigsaw_unindended_bias_data.filter(filter_toxicity_annotator_count)
         # ######################################
-
         def create_label_for_jigsaw_unindended_bias_dataset(example):
             example['label'] = 1 if (any([example[col] > 0.5 for col in
                                           ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
@@ -288,6 +339,7 @@ class DataLoader:
         def add_label(example):
             example['label'] = label_value
             return example
+
         data = data.map(add_label)
         return data.remove_columns(removed_column)
 
@@ -331,6 +383,9 @@ class DataLoader:
 
 if __name__ == '__main__':
     # desired_total_data_n = 10000
-    dataset = DataLoader().load_data(TOXICITY_TASK_NAME)
+    # dataset = DataLoader().load_data(TOXICITY_TASK_NAME)
     # DataLoader().load_data(task_name=GIBBERISH_TASK_NAME)
     # DataLoader()._load_toxicity_data_3M()
+    data = DataLoader().load_toxic_sophisticated_data()
+    print(data)
+    print(f"sample = {data[0]}")
