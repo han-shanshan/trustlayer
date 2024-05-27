@@ -87,7 +87,7 @@ class DataProcessor:
         elif self.task_name is TOPIC_TASK_NAME:
             return dataset.map(self.process_topic_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
-        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME]:
+        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             return dataset.map(self.process_single_label_classification_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
         elif self.task_name is HALLUCINATION_TASK_NAME:
