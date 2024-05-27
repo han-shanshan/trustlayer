@@ -24,13 +24,13 @@ class DataProcessor:
         if self.task_name is TOPIC_TASK_NAME:
             return "train_2020", "test_2020", "validation_2020"
         elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME,
-                                HALLUCINATION_TASK_NAME]:
+                                HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             return "train", "test", "validation"
         else:
             Exception("wrong task name")
 
     def get_remove_column_names(self, dataset):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             return "text"
         train_phase_name, _, _ = self.get_phase_names()
         if self.task_name is HALLUCINATION_TASK_NAME:
