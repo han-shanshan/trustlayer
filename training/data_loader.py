@@ -39,6 +39,7 @@ class DataLoader:
                 task_data = self.load_toxic_sophisticated_data()
         elif task_name == ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME:
             task_data = self.all_in_one_data(dataset_types)
+            return task_data
         else:
             task_data = None
         print(f"-----task name = {task_name}------\n original dataset: {task_data}")

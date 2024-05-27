@@ -1,7 +1,7 @@
 import numpy as np
 from datasets import concatenate_datasets, DatasetDict
 from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 from training.data_loader import DataLoader
 
 
@@ -46,7 +46,7 @@ class DataProcessor:
             """labels: noise, word salad, clean; reference: https://huggingface.co/madhurjindal/autonlp-Gibberish-Detector-492513457
             """
             return ['clean', 'noise', 'word salad']
-        elif self.task_name is UNSAFE_PROMPT_TASK_NAME:
+        elif self.task_name in [UNSAFE_PROMPT_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             return ['safe', 'unsafe']
         elif self.task_name is HALLUCINATION_TASK_NAME:
             return ['valid', 'hallucination', 'irrelevant']
