@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
 from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
     TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
-    CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME
+    CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 from training.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
@@ -68,7 +68,7 @@ class TrainingEngine:
 
     def set_label_metrics(self):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
-                              TOXICITY_TASK_NAME]:
+                              TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             self.label_metrics = self.compute_metrics_for_single_label_tasks
         else:
             self.label_metrics = self.compute_metrics_for_multilabel_tasks
@@ -101,7 +101,7 @@ class TrainingEngine:
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME,
-                              CUSTOMIZED_HALLUCINATION_TASK_NAME]:
+                              CUSTOMIZED_HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,

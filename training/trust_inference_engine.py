@@ -1,7 +1,7 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE
+    HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 import torch
 import json
 import re
@@ -29,7 +29,7 @@ class TrustInferenceEngine:
         if problem_type is not None and problem_type in ["single_label_classification", "multi_label_classification"]:
             self.problem_type = problem_type
         elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME,
-                              HALLUCINATION_TASK_NAME]:
+                              HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
             self.problem_type = "single_label_classification"
         else:
             self.problem_type = "multi_label_classification"
