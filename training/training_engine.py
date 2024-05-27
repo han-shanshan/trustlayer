@@ -56,12 +56,12 @@ class TrainingEngine:
         self.set_label_metrics()
         self.config = config
         self.metrics_average = 'micro'
-        self.dataset_type = None
+        self.dataset_types = None
         if self.config is not None:
             if "metrics_average" in self.config:
                 self.metrics_average = self.config["metrics_average"]
-            if "dataset_type" in self.config:
-                self.dataset_type = self.config["dataset_type"]
+            if "dataset_types" in self.config:
+                self.dataset_types = self.config["dataset_types"]
 
     def set_task_type(self, task_name):
         self.task_name = task_name
@@ -130,7 +130,7 @@ class TrainingEngine:
 
     def train(self, desired_total_data_n=None):
         data_processor = DataProcessor(task_name=self.task_name)
-        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_type=self.dataset_type,
+        dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
                                                                                 desired_total_data_n=desired_total_data_n)
         print(f"sample data = {dataset['train'][0]}")
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")

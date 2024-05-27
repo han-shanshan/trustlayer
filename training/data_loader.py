@@ -4,7 +4,7 @@ import pandas as pd
 from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
 from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 
 
 def remove_newlines(data_entry):
@@ -18,7 +18,8 @@ class DataLoader:
     def __init__(self):
         pass
 
-    def load_data(self, task_name, dataset_type=None, desired_total_data_n=None, training_per=0.8, validation_per=0.1,
+    def load_data(self, task_name, dataset_types: list = None, desired_total_data_n=None, training_per=0.8,
+                  validation_per=0.1,
                   test_per=0.1):
         # None: return full dataset by default
         if task_name == TOPIC_TASK_NAME:
@@ -32,10 +33,12 @@ class DataLoader:
         elif task_name == HALLUCINATION_TASK_NAME:
             task_data = self.load_hallucination_data()
         elif task_name == TOXICITY_TASK_NAME:
-            if dataset_type is None:
+            if dataset_types is None:
                 task_data = self.load_toxicity_data()  # default
             else:
                 task_data = self.load_toxic_sophisticated_data()
+        elif task_name == ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME:
+            task_data = self.all_in_one_data(dataset_types)
         else:
             task_data = None
         print(f"-----task name = {task_name}------\n original dataset: {task_data}")
@@ -50,6 +53,154 @@ class DataLoader:
                                                  validation_per)
         print(f"new dataset: {DatasetDict(small_dataset)}")
         return small_dataset
+
+    """
+    (train #, evaluation #, testing #)
+    Unsafe data: 
+    1. HEx-PHI: https://huggingface.co/datasets/LLM-Tuning-Safety/HEx-PHI
+       - 330 for training
+    2. (?) ChatGPT-Jailbreak-Prompts: https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts
+    
+    Safe data: 
+    1. Hotpot QA: https://huggingface.co/datasets/hotpot_qa
+    2. TruthfulQA: https://huggingface.co/datasets/truthful_qa?row=3
+    3. awesome chatgpt prompts: https://huggingface.co/datasets/fka/awesome-chatgpt-prompts
+    
+    Hybrid data: 
+    1. toxic-chat: https://huggingface.co/datasets/lmsys/toxic-chat
+    2. openai-moderation: https://huggingface.co/datasets/mmathys/openai-moderation-api-evaluation
+       - 1680
+    3. gibberish: https://huggingface.co/datasets/Sowmya15/March06_gibberish
+    """
+    def all_in_one_data(self, dataset_types: list = None):
+        data_number_dict = {
+            "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+            "toxic-chat": {"train": 2000, "validation": 100, "test": 50},
+            "openai": {"train": 100, "validation": 1500, "test": 80},
+            "hotpot_qa": {"train": 500, "validation": 20, "test": 80},
+            "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+            "awesome_chatgpt_prompts": {"train": 120, "validation": 30, "test": 3},
+            "jigsaw": {"train": 500, "validation": 100, "test": 100},
+            "gibberish": {"train": 500, "validation": 50, "test": 50},
+        }
+        training_dataset = None
+        validation_dataset = None
+        test_dataset = None
+
+        for dataset_type in dataset_types:
+            dataset = None
+            if dataset_type == "HEx-PHI":
+                dataset = self.load_HEx_PHI_data()
+            elif dataset_type == "toxic-chat":
+                dataset = load_dataset("lmsys/toxic-chat", "toxicchat1123")
+                dataset = self._process_toxic_chat_subdata(dataset, remove_jailbreaking=False)["train"]
+            elif dataset_type == "openai":
+                dataset = load_dataset("mmathys/openai-moderation-api-evaluation")["train"]
+                dataset = dataset.map(lambda example: {'text': example['prompt'],
+                                                       'label': 1 if any([example[col] == 1 for
+                                                                          col in ['S', 'H', 'V', 'HR', 'SH', 'S3', 'H2',
+                                                                                  'V']]) else 0})
+            elif dataset_type in ["hotpot_qa", "truthful_qa"]:
+                if dataset_type == "hotpot_qa":
+                    dataset = load_dataset("hotpot_qa", 'distractor')["train"]  # ['distractor', 'fullwiki']
+                else:
+                    dataset = load_dataset("truthful_qa", "generation")["validation"]
+                dataset = dataset.map(lambda example: {"text": example["question"], "label": 0})
+            elif dataset_type == "mt-bench":
+                dataset = load_dataset("lmsys/mt_bench_human_judgments", "human")
+                dataset = dataset.map(lambda example: {"text": example["conversation_a"][0]["content"], "label": 0})
+            elif dataset_type == "awesome_chatgpt_prompts":
+                dataset = load_dataset("fka/awesome-chatgpt-prompts")["train"]
+                dataset = dataset.map(lambda example: {"text": example["prompt"], "label": 0})
+            elif dataset_type == "jigsaw":
+                dataset = self.load_toxic_sophisticated_data(desired_number=10000)
+                dataset = dataset.filter(lambda example: example["label"] == 1)
+            elif dataset_type == "gibberish":
+                dataset = self.filter_non_records(load_dataset("Sowmya15/March06_gibberish"), "text")["train"]
+                dataset = dataset.map(lambda example: {"label": 1 if example["label"] != 0 else 0})
+                dataset = dataset.filter(lambda example: example["label"] == 1)
+
+            if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw", "awesome_chatgpt_prompts"]:
+                dataset = dataset.remove_columns(
+                    [col for col in dataset.column_names if col not in ["text", "label"]])
+
+            print(f"{dataset_type}: {dataset}")
+            print(f"sample data = {dataset[0]}\n=====================\n")
+
+            dataset = dataset.shuffle(seed=0)
+            training_data_num = data_number_dict[dataset_type]["train"]
+            validation_data_num = data_number_dict[dataset_type]["validation"]
+            test_data_num = data_number_dict[dataset_type]["test"]
+
+            if training_data_num > 0:
+                if training_dataset is None:
+                    training_dataset = dataset.select(range(training_data_num))
+                else:
+                    training_dataset = concatenate_datasets(
+                        [training_dataset, dataset.select(range(training_data_num))])
+            if validation_data_num > 0:
+                if validation_dataset is None:
+                    validation_dataset = dataset.select(
+                        range(training_data_num, training_data_num + validation_data_num))
+                else:
+                    validation_dataset = concatenate_datasets([validation_dataset,
+                                                               dataset.select(range(training_data_num,
+                                                                                    training_data_num
+                                                                                    + validation_data_num))])
+            if test_data_num > 0:
+                if test_dataset is None:
+                    test_dataset = dataset.select(range(training_data_num + validation_data_num,
+                                                        training_data_num + validation_data_num + test_data_num))
+                else:
+                    test_dataset = concatenate_datasets(
+                        [test_dataset, dataset.select(range(training_data_num + validation_data_num,
+                                                            training_data_num + validation_data_num + test_data_num))])
+        datasets = DatasetDict({
+            'train': training_dataset,
+            'validation': validation_dataset,
+            'test': test_dataset
+        })
+        datasets = datasets.shuffle(seed=0)
+        print(f"final datasets = {datasets}")
+        return datasets
+
+            # if dataset_type == "lmsys-chat":
+            #     data = load_dataset("lmsys/lmsys-chat-1m")["train"]
+            #     print(data)
+            #     print(f"sample data = {data[0]}")
+
+    @staticmethod
+    def print_distinct_column_name(dataset, column_name):
+        df = dataset.to_pandas()
+
+        # Get distinct values from the column
+        distinct_values = df[column_name].unique()
+        print(f"distinct values in column {column_name}: {distinct_values}")
+
+    @staticmethod
+    def load_HEx_PHI_data():
+        data_frames = []
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        csv_file_directory = os.path.join(dir_path, '..', 'cache', 'downloaded_data', 'HEx-PHI')
+        for filename in os.listdir(csv_file_directory):
+            if filename.endswith('.csv'):  # Check for CSV files
+                file_path = os.path.join(csv_file_directory, filename)
+                df = pd.read_csv(file_path, header=None, names=['text'])
+                data_frames.append(df)
+        merged_df = pd.concat(data_frames, ignore_index=True)  # Concatenate all dataframes into one
+        # self.detect_duplicates_in_pd_dataset(merged_df)
+        hf_dataset = Dataset.from_pandas(merged_df)
+        hf_dataset = hf_dataset.map(lambda example: {'text': example['text'], 'label': 1})
+        return hf_dataset
+
+    @staticmethod
+    def detect_duplicates_in_pd_dataset(merged_df):
+        duplicates = merged_df[merged_df.duplicated('text', keep=False)]
+        if not duplicates.empty:
+            print("Duplicates found:")
+            print(duplicates)
+        else:
+            print("No duplicates found.")
 
     @staticmethod
     def get_a_small_dataset(downloaded_dataset, desired_total_data_num, test_per, training_per,
@@ -87,7 +238,7 @@ class DataLoader:
              toxicity3M_dataset])
         return merged_dataset
 
-    def load_toxic_sophisticated_data(self):
+    def load_toxic_sophisticated_data(self, desired_number=None):
         bias_data = self._load_original_jigsaw_unindended_bias_dataset()
         bias_data = bias_data.remove_columns([item for item in bias_data["train"].column_names
                                               if
@@ -96,17 +247,23 @@ class DataLoader:
                                                            'toxicity_annotator_count',
                                                            'comment_text']])
         merged_dataset = self._merge_several_datasets_of_different_phases([bias_data])
-        filtered_jigsawdata = self._jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset)
-        dataset = Dataset.from_pandas(filtered_jigsawdata).rename_column('comment_text', 'text')
+
+        filtered_jigsaw_data = self._jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset)
+        dataset = Dataset.from_pandas(filtered_jigsaw_data).rename_column('comment_text', 'text')
         dataset = self.filter_a_split_of_hf_dataset(dataset, "text")
+        if desired_number is not None:
+            if not isinstance(desired_number, int):
+                raise ValueError(f"undesired value of desired_number: {desired_number}")
+            dataset = dataset.select(range(desired_number))
 
         def create_label_based_on_columns(example):
-            sum_score = example['toxicity'] + example['severe_toxicity'] + example['obscene'] + example['sexual_explicit'] \
-                  + example['identity_attack'] + example['insult'] + example['threat']
+            sum_score = example['toxicity'] + example['severe_toxicity'] + example['obscene'] + example[
+                'sexual_explicit'] \
+                        + example['identity_attack'] + example['insult'] + example['threat']
             example['label'] = 0
             if (sum_score >= 0.5 and example['toxicity_annotator_count'] > 20) \
                     or (0.3 < sum_score < 0.5 and 30 <= example['toxicity_annotator_count'] <= 100) \
-                    or 50 < example['toxicity_annotator_count'] <= 100\
+                    or 50 < example['toxicity_annotator_count'] <= 100 \
                     or (sum_score >= 0.5 and ('Trump' in example['text'])):
                 example['label'] = 1
             return example
@@ -115,7 +272,7 @@ class DataLoader:
         return dataset
 
     @staticmethod
-    def _jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset, key_column ="comment_text"):
+    def _jissaw_data_process_duplicate_texts_and_numeric_values_in_record(merged_dataset, key_column="comment_text"):
         df = merged_dataset.to_pandas()
         df = df.drop_duplicates()
         duplicate_keys = df[df.duplicated(subset=[key_column], keep=False)]
@@ -234,10 +391,17 @@ class DataLoader:
                 """
         csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
                                      'jigsaw-unintended-bias-in-toxicity-classification', 'all_data.csv')
-        return DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
+        dataset = DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
+        return dataset
+        # if desired_number is None:
+        #     return dataset
+        # if not isinstance(desired_number, int):
+        #     raise ValueError(f"undesired value of desired_number: {desired_number}")
+        # return dataset["train"].select(range(desired_number))
 
     def _load_jigsaw_unindended_bias_dataset(self):
         jigsaw_unindended_bias_data = self._load_original_jigsaw_unindended_bias_dataset()
+
         # ######### testing ##################
         # def filter_toxicity_annotator_count(example):
         #     return (30 < example['toxicity_annotator_count'] < 50) and all(
@@ -273,7 +437,7 @@ class DataLoader:
         return filtered_data.remove_columns(["lang"])
 
     @staticmethod
-    def _process_toxic_chat_subdata(toxic_chat_data):
+    def _process_toxic_chat_subdata(toxic_chat_data, remove_jailbreaking=True):
         from langdetect import detect
         import re
 
@@ -285,14 +449,38 @@ class DataLoader:
                        example["user_input"]) \
                    and detect(example["user_input"]) == 'en'
 
-        toxic_chat_data = toxic_chat_data.filter(remove_jailbreaking_and_non_english_inputs)
-        toxic_chat_data = toxic_chat_data.remove_columns(
-            [col for col in toxic_chat_data["train"].column_names if col not in ["user_input", "toxicity"]]
-        )
-        for split in toxic_chat_data.keys():
-            toxic_chat_data[split] = toxic_chat_data[split].rename_column("toxicity", "label")
-            toxic_chat_data[split] = toxic_chat_data[split].rename_column("user_input", "text")
-        return toxic_chat_data
+        def remove_non_english_inputs(example):
+            return not re.compile(
+                r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
+                r'-+*/]\s*\d+\s*=\s*))$').match(
+                example["user_input"]) \
+                   and detect(example["user_input"]) == 'en'
+
+        if remove_jailbreaking:
+            filter_function = remove_jailbreaking_and_non_english_inputs
+        else:
+            filter_function = remove_non_english_inputs
+        toxic_chat_data = toxic_chat_data.filter(filter_function)
+
+        if remove_jailbreaking:
+            toxic_chat_data = toxic_chat_data.remove_columns(
+                [col for col in toxic_chat_data["train"].column_names if col not in ["user_input", "toxicity"]]
+            )
+            for split in toxic_chat_data.keys():
+                toxic_chat_data[split] = toxic_chat_data[split].rename_column("toxicity", "label")
+                toxic_chat_data[split] = toxic_chat_data[split].rename_column("user_input", "text")
+            return toxic_chat_data
+        else:
+
+            toxic_chat_data = toxic_chat_data.map(lambda example: {'text': example['user_input'],
+                                                                   'label': 0 if (example['toxicity'] == 0 and example[
+                                                                       'jailbreaking'] == 0) else 1})
+            toxic_chat_data = toxic_chat_data.remove_columns(
+                [col for col in toxic_chat_data["train"].column_names if
+                 col not in ["text", "label"]]
+            )
+
+            return toxic_chat_data
 
     @staticmethod
     def load_hallucination_data():
@@ -398,3 +586,10 @@ class DataLoader:
     @staticmethod
     def filter_a_split_of_hf_dataset(dataset_phase, col_name):
         return dataset_phase.filter(lambda example: example[col_name] is not None)
+
+
+if __name__ == '__main__':
+    DataLoader().all_in_one_data([
+        "HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa",
+        "awesome_chatgpt_prompts", "jigsaw",
+        "gibberish"])

@@ -1,4 +1,4 @@
-from training.constants import TOXICITY_TASK_NAME, FOX_BASE_GPU
+from training.constants import TOXICITY_TASK_NAME, FOX_BASE_GPU, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 from training.trust_inference_engine import TrustInferenceEngine
 from training.training_engine import TrainingEngine
 import os
@@ -7,7 +7,7 @@ import json
 import wandb
 
 
-TASK_NAME = TOXICITY_TASK_NAME
+TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
@@ -31,9 +31,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    # wandb.init(project=f"{TASK_NAME} with FOX")
+    wandb.init(project=f"{TASK_NAME} with FOX")
+    dataset_types = ["HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw", "gibberish"]
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                             config={"metrics_average": "macro", "dataset_types": ["sophisticated"]})
+                             config={"metrics_average": "macro", "dataset_types": dataset_types})
     trainer.train(desired_total_data_n=100)
     # text = "i'm happy hahaha"
     #

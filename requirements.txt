@@ -13,3 +13,4 @@ requests~=2.31.0
 pysafebrowsing~=0.1.2
 numpy~=1.24.4
 evaluate~=0.4.1
+peft

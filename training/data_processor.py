@@ -23,7 +23,8 @@ class DataProcessor:
     def get_phase_names(self):
         if self.task_name is TOPIC_TASK_NAME:
             return "train_2020", "test_2020", "validation_2020"
-        elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME]:
+        elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME,
+                                HALLUCINATION_TASK_NAME]:
             return "train", "test", "validation"
         else:
             Exception("wrong task name")
@@ -56,7 +57,7 @@ class DataProcessor:
                 return label_names_to_predict
             else:
                 return ['non-toxic', 'toxic']
-        elif self.task_name is TOPIC_TASK_NAME: # todo: check the dataset in details
+        elif self.task_name is TOPIC_TASK_NAME:  # todo: check the dataset in details
             """ 
             DatasetDict({
                 test_2020: Dataset({ features: ['text', 'date', 'label', 'label_name', 'id'], num_rows: 573})
@@ -93,8 +94,10 @@ class DataProcessor:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
-    def get_dataset(self, desired_total_data_n=None, dataset_type=None, training_per=0.8, validation_per=0.1, test_per=0.1):
-        dataset = DataLoader().load_data(task_name=self.task_name, dataset_type=dataset_type, desired_total_data_n=desired_total_data_n,
+    def get_dataset(self, desired_total_data_n=None, dataset_types: list = None,
+                    training_per=0.8, validation_per=0.1, test_per=0.1):
+        dataset = DataLoader().load_data(task_name=self.task_name, dataset_types=dataset_types,
+                                         desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")
