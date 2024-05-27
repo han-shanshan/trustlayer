@@ -443,7 +443,7 @@ class DataLoader:
         import re
 
         def remove_jailbreaking_and_non_english_inputs(example):
-            return example["jailbreaking"] == 0 and \
+            return example['human_annotation'] and example["jailbreaking"] == 0 and \
                    not re.compile(
                        r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
                        r'-+*/]\s*\d+\s*=\s*))$').match(
@@ -451,7 +451,7 @@ class DataLoader:
                    and detect(example["user_input"]) == 'en'
 
         def remove_non_english_inputs(example):
-            return not re.compile(
+            return example['human_annotation'] and not re.compile(
                 r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
                 r'-+*/]\s*\d+\s*=\s*))$').match(
                 example["user_input"]) \

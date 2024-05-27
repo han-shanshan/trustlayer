@@ -31,7 +31,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    wandb.init(project=f"{TASK_NAME} with FOX")
+    # wandb.init(project=f"{TASK_NAME} with FOX")
     dataset_types = ["HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw", "gibberish"]
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
                              config={"metrics_average": "macro", "dataset_types": dataset_types})

@@ -148,7 +148,7 @@ class TrainingEngine:
         print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
-        output_dir = self.base_model_name.split("/")[1] + "-" + self.task_name
+        output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name
 
         peft_trainer = Trainer(
             model=model,
