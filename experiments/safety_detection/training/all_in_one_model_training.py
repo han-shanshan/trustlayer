@@ -5,6 +5,7 @@ import os
 import torch
 import json
 import wandb
+from datasets import load_dataset
 
 
 TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
@@ -31,11 +32,29 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    # wandb.init(project=f"{TASK_NAME} with FOX")
-    dataset_types = ["HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw", "gibberish"]
+    wandb.init(project=f"{TASK_NAME} with FOX")
+    dataset_types = ["HEx-PHI", "toxic-chat",
+                     "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
+                     "gibberish", "mt-bench", "gpt-jailbreak", "jailbreak"
+                     ]
+
+    data_num_dict = {
+                "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+                "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+                "openai": {"train": 150, "validation": 1500, "test": 20},
+                "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
+                "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+                "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 3},
+                "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
+                "gibberish": {"train": 1000, "validation": 150, "test": 100},
+                "mt-bench": {"train": 0, "validation": 80, "test": 0},
+                "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
+                "jailbreak": {"train": 450, "validation": 0, "test": 50},
+            }
+
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                             config={"metrics_average": "macro", "dataset_types": dataset_types})
-    trainer.train(desired_total_data_n=100)
+                             config={"metrics_average": "macro", "dataset_types": dataset_types, "data_num_dict": data_num_dict})
+    trainer.train()
     # text = "i'm happy hahaha"
     #
     # inference_engine = InferenceEngine(default_task=TASK_NAME)

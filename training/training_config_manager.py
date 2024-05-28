@@ -13,8 +13,8 @@ class TrainingConfigManager:
         if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
-                num_train_epochs=20,  # number of training epochs
-                per_device_train_batch_size=8,  # batch size per device during training
+                num_train_epochs=10,  # number of training epochs
+                per_device_train_batch_size=batch_size,  # batch size per device during training
                 gradient_accumulation_steps=2,  # number of steps before performing a backward/update pass
                 gradient_checkpointing=True,  # use gradient checkpointing to save memory
                 optim="adamw_torch_fused",  # use fused adamw optimizer

@@ -5,6 +5,7 @@ from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
 from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+from utils.file_operations import write_a_dictionary_to_file
 
 
 def remove_newlines(data_entry):
@@ -18,9 +19,8 @@ class DataLoader:
     def __init__(self):
         pass
 
-    def load_data(self, task_name, dataset_types: list = None, desired_total_data_n=None, training_per=0.8,
-                  validation_per=0.1,
-                  test_per=0.1):
+    def load_data(self, task_name, dataset_types: list = None, data_num_dict=None, desired_total_data_n=None,
+                  training_per=0.8, validation_per=0.1, test_per=0.1):
         # None: return full dataset by default
         if task_name == TOPIC_TASK_NAME:
             task_data = load_dataset("cardiffnlp/tweet_topic_multi")
@@ -38,7 +38,7 @@ class DataLoader:
             else:
                 task_data = self.load_toxic_sophisticated_data()
         elif task_name == ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME:
-            task_data = self.all_in_one_data(dataset_types)
+            task_data = self.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
             return task_data
         else:
             task_data = None
@@ -61,40 +61,37 @@ class DataLoader:
     1. HEx-PHI: https://huggingface.co/datasets/LLM-Tuning-Safety/HEx-PHI
        - 330 for training
     2. (?) ChatGPT-Jailbreak-Prompts: https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts
-    
+
     Safe data: 
     1. Hotpot QA: https://huggingface.co/datasets/hotpot_qa
     2. TruthfulQA: https://huggingface.co/datasets/truthful_qa?row=3
     3. awesome chatgpt prompts: https://huggingface.co/datasets/fka/awesome-chatgpt-prompts
-    
+
     Hybrid data: 
     1. toxic-chat: https://huggingface.co/datasets/lmsys/toxic-chat
     2. openai-moderation: https://huggingface.co/datasets/mmathys/openai-moderation-api-evaluation
        - 1680
     3. gibberish: https://huggingface.co/datasets/Sowmya15/March06_gibberish
     """
-    def all_in_one_data(self, dataset_types: list = None):
-        data_number_dict = {
-            "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-            "toxic-chat": {"train": 2000, "validation": 100, "test": 50},
-            "openai": {"train": 100, "validation": 1500, "test": 80},
-            "hotpot_qa": {"train": 500, "validation": 20, "test": 80},
-            "truthful_qa": {"train": 500, "validation": 100, "test": 100},
-            "awesome_chatgpt_prompts": {"train": 120, "validation": 30, "test": 3},
-            "jigsaw": {"train": 500, "validation": 100, "test": 100},
-            "gibberish": {"train": 500, "validation": 50, "test": 50},
-        }
+
+    def all_in_one_data(self, dataset_types: list = None, data_num_dict=None):
+        if data_num_dict is None:
+            raise ValueError(f"data num dict is None!")
+
         training_dataset = None
         validation_dataset = None
         test_dataset = None
+        print(f"dataset_types = {dataset_types}")
+        dataset_label_counter_meta = {}
 
         for dataset_type in dataset_types:
             dataset = None
             if dataset_type == "HEx-PHI":
                 dataset = self.load_HEx_PHI_data()
-            elif dataset_type == "toxic-chat":
-                dataset = load_dataset("lmsys/toxic-chat", "toxicchat1123")
-                dataset = self._process_toxic_chat_subdata(dataset, remove_jailbreaking=False)["train"]
+            elif dataset_type == "toxic-chat": # toxic-chat0124 is better than toxic-chat1123
+                dataset = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
+                                                           remove_jailbreaking=False)["train"]
+                # the quality is hard to evaluate
             elif dataset_type == "openai":
                 dataset = load_dataset("mmathys/openai-moderation-api-evaluation")["train"]
                 dataset = dataset.map(lambda example: {'text': example['prompt'],
@@ -108,20 +105,32 @@ class DataLoader:
                     dataset = load_dataset("truthful_qa", "generation")["validation"]
                 dataset = dataset.map(lambda example: {"text": example["question"], "label": 0})
             elif dataset_type == "mt-bench":
-                dataset = load_dataset("lmsys/mt_bench_human_judgments", "human")
+                dataset = load_dataset("lmsys/mt_bench_human_judgments")["human"]
                 dataset = dataset.map(lambda example: {"text": example["conversation_a"][0]["content"], "label": 0})
             elif dataset_type == "awesome_chatgpt_prompts":
                 dataset = load_dataset("fka/awesome-chatgpt-prompts")["train"]
                 dataset = dataset.map(lambda example: {"text": example["prompt"], "label": 0})
             elif dataset_type == "jigsaw":
-                dataset = self.load_toxic_sophisticated_data(desired_number=10000)
+                dataset = self.load_toxic_sophisticated_data(desired_number=50000)
                 dataset = dataset.filter(lambda example: example["label"] == 1)
             elif dataset_type == "gibberish":
                 dataset = self.filter_non_records(load_dataset("Sowmya15/March06_gibberish"), "text")["train"]
                 dataset = dataset.map(lambda example: {"label": 1 if example["label"] != 0 else 0})
                 dataset = dataset.filter(lambda example: example["label"] == 1)
+            elif dataset_type == "jailbreak":
+                dataset = load_dataset("jackhhao/jailbreak-classification")["train"]
+                dataset = dataset.map(
+                    lambda example: {"text": example["prompt"], "label": 1 if example["type"] == "jailbreak" else 0})
+                dataset = dataset.filter(lambda example: example["label"] == 1)
+            elif dataset_type == "gpt-jailbreak":
+                dataset = load_dataset("rubend18/ChatGPT-Jailbreak-Prompts")["train"]
+                dataset = dataset.map(
+                    lambda example: {"text": example["Prompt"], "label": 1})
 
-            if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw", "awesome_chatgpt_prompts"]:
+            dataset = self.drop_duplicates_in_a_dataset(dataset, col_name="text")
+
+            if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw", "awesome_chatgpt_prompts",
+                                "jailbreak", "gpt-jailbreak"]:
                 dataset = dataset.remove_columns(
                     [col for col in dataset.column_names if col not in ["text", "label"]])
 
@@ -129,33 +138,39 @@ class DataLoader:
             print(f"sample data = {dataset[0]}\n=====================\n")
 
             dataset = dataset.shuffle(seed=0)
-            training_data_num = data_number_dict[dataset_type]["train"]
-            validation_data_num = data_number_dict[dataset_type]["validation"]
-            test_data_num = data_number_dict[dataset_type]["test"]
+            training_data_num = data_num_dict[dataset_type]["train"]
+            validation_data_num = data_num_dict[dataset_type]["validation"]
+            test_data_num = data_num_dict[dataset_type]["test"]
 
+            meta = {}
             if training_data_num > 0:
+                sub_data = dataset.select(range(training_data_num))
                 if training_dataset is None:
-                    training_dataset = dataset.select(range(training_data_num))
+                    training_dataset = sub_data
                 else:
-                    training_dataset = concatenate_datasets(
-                        [training_dataset, dataset.select(range(training_data_num))])
+                    training_dataset = concatenate_datasets([training_dataset, sub_data])
+                meta["training_label_1"], meta["training_label_0"], meta["training_total"] = self.count_label_numbers(
+                    sub_data)
             if validation_data_num > 0:
+                sub_data = dataset.select(range(training_data_num, training_data_num + validation_data_num))
                 if validation_dataset is None:
-                    validation_dataset = dataset.select(
-                        range(training_data_num, training_data_num + validation_data_num))
+                    validation_dataset = sub_data
                 else:
-                    validation_dataset = concatenate_datasets([validation_dataset,
-                                                               dataset.select(range(training_data_num,
-                                                                                    training_data_num
-                                                                                    + validation_data_num))])
+                    validation_dataset = concatenate_datasets([validation_dataset, sub_data])
+                meta["validation_label_1"], meta["validation_label_0"], meta[
+                    "validation_total"] = self.count_label_numbers(sub_data)
             if test_data_num > 0:
+                sub_data = dataset.select(range(training_data_num + validation_data_num,
+                                                training_data_num + validation_data_num + test_data_num))
                 if test_dataset is None:
-                    test_dataset = dataset.select(range(training_data_num + validation_data_num,
-                                                        training_data_num + validation_data_num + test_data_num))
+                    test_dataset = sub_data
                 else:
-                    test_dataset = concatenate_datasets(
-                        [test_dataset, dataset.select(range(training_data_num + validation_data_num,
-                                                            training_data_num + validation_data_num + test_data_num))])
+                    test_dataset = concatenate_datasets([test_dataset, sub_data])
+                meta["test_label_1"], meta["test_label_0"], meta["test_total"] = self.count_label_numbers(sub_data)
+            dataset_label_counter_meta[dataset_type] = meta
+
+        write_a_dictionary_to_file(file_name="dataset_label_counter_meta.txt", dictionary=dataset_label_counter_meta)
+
         datasets = DatasetDict({
             'train': training_dataset,
             'validation': validation_dataset,
@@ -165,10 +180,23 @@ class DataLoader:
         print(f"final datasets = {datasets}")
         return datasets
 
-            # if dataset_type == "lmsys-chat":
-            #     data = load_dataset("lmsys/lmsys-chat-1m")["train"]
-            #     print(data)
-            #     print(f"sample data = {data[0]}")
+        # if dataset_type == "lmsys-chat":
+        #     data = load_dataset("lmsys/lmsys-chat-1m")["train"]
+        #     print(data)
+        #     print(f"sample data = {data[0]}")
+
+    @staticmethod
+    def count_label_numbers(sub_dataset):
+        label_one_num = len(sub_dataset.filter(lambda example: example['label'] == 1))
+        label_zero_num = len(sub_dataset.filter(lambda example: example['label'] == 0))
+        return label_one_num, label_zero_num, len(sub_dataset)
+
+    @staticmethod
+    def drop_duplicates_in_a_dataset(dataset, col_name="text"):
+        df = dataset.to_pandas()
+        df_unique = df.drop_duplicates(subset=[col_name])  # Drop duplicates based on 'text' column
+        dataset = Dataset.from_pandas(df_unique)
+        return dataset
 
     @staticmethod
     def print_distinct_column_name(dataset, column_name):

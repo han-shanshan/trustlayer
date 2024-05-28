@@ -13,14 +13,15 @@ from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HAL
 from training.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from scipy.special import expit as sigmoid
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
 precision_metric = load_metric("precision")
 recall_metric = load_metric("recall")
 f1_metric = load_metric("f1")
-roc_auc_metric = load_metric("roc_auc")
+roc_auc_metric = evaluate.load("roc_auc")
+# roc_auc_metric = load_metric("roc_auc")
 
 
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
@@ -57,11 +58,14 @@ class TrainingEngine:
         self.config = config
         self.metrics_average = 'micro'
         self.dataset_types = None
+        self.data_num_dict = None
         if self.config is not None:
             if "metrics_average" in self.config:
                 self.metrics_average = self.config["metrics_average"]
             if "dataset_types" in self.config:
                 self.dataset_types = self.config["dataset_types"]
+            if "data_num_dict" in self.config:
+                self.data_num_dict = self.config["data_num_dict"]
 
     def set_task_type(self, task_name):
         self.task_name = task_name
@@ -84,17 +88,20 @@ class TrainingEngine:
     def compute_metrics_for_single_label_tasks(self, eval_pred):
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=1)
+        probabilities = sigmoid(logits[:, 1])
 
         accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
         precision = precision_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
         recall = recall_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
         f1 = f1_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
+        roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
 
         return {
             "accuracy": accuracy["accuracy"],
             "precision": precision["precision"],
             "recall": recall["recall"],
             "f1": f1["f1"],
+            "roc_auc": roc_auc["roc_auc"]
         }
 
         # return accuracy.compute(predictions=predictions, references=labels)
@@ -131,6 +138,7 @@ class TrainingEngine:
     def train(self, desired_total_data_n=None):
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
+                                                                                data_num_dict=self.data_num_dict,
                                                                                 desired_total_data_n=desired_total_data_n)
         print(f"sample data = {dataset['train'][0]}")
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
