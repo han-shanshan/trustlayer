@@ -26,9 +26,12 @@ class DataReader:
         file_path = os.path.join(dir_path, '..', 'utils', 'huggingface.apikey')
         return self.read_data_file(file_path)
 
-    def read_google_apikey(self):
+    def read_google_apikey(self, is_perspective_api=False):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, '..', 'utils', 'google.apikey')
+        if not is_perspective_api:
+            file_path = os.path.join(dir_path, '..', 'utils', 'google.apikey')
+        else:
+            file_path = os.path.join(dir_path, '..', 'utils', 'perspective_api.key')
         return self.read_data_file(file_path)
 
     @staticmethod

@@ -125,7 +125,7 @@ class DataLoader:
                     "validation_total"] = self.count_label_numbers(sub_data)
             if test_data_num > 0:
                 sub_data = dataset_list[i].select(range(training_data_num + validation_data_num,
-                                                  training_data_num + validation_data_num + test_data_num))
+                                                        training_data_num + validation_data_num + test_data_num))
                 if test_dataset is None:
                     test_dataset = sub_data
                 else:
@@ -160,9 +160,7 @@ class DataLoader:
                     temp_duplicate_set.add(example['text'].strip())
                 else:
                     seen_texts.add(example['text'].strip())
-            print(f"before removing duplicates in a subset: {len(dataset_list[i])}")
             dataset_list[i] = D.filter(lambda e: e['text'].strip() not in temp_duplicate_set)
-            print(f"after removing duplicates in a subset: {len(dataset_list[i])}")
         return dataset_list
 
     def get_a_dataset_for_all_in_one_task(self, dataset_type):
@@ -176,9 +174,10 @@ class DataLoader:
         elif dataset_type == "openai":  # this dataset has duplicates; should be removed with str.strip()
             sub_dataset = load_dataset("mmathys/openai-moderation-api-evaluation")["train"]
             sub_dataset = sub_dataset.map(lambda example: {'text': example['prompt'],
-                                                   'label': 1 if any([example[col] == 1 for
-                                                                      col in ['S', 'H', 'V', 'HR', 'SH', 'S3', 'H2',
-                                                                              'V']]) else 0})
+                                                           'label': 1 if any([example[col] == 1 for
+                                                                              col in
+                                                                              ['S', 'H', 'V', 'HR', 'SH', 'S3', 'H2',
+                                                                               'V']]) else 0})
         elif dataset_type in ["hotpot_qa", "truthful_qa"]:
             if dataset_type == "hotpot_qa":
                 sub_dataset = load_dataset("hotpot_qa", 'distractor')["train"]  # ['distractor', 'fullwiki']
@@ -646,9 +645,9 @@ if __name__ == '__main__':
     #     "HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa",
     #     "awesome_chatgpt_prompts", "jigsaw",
     #     "gibberish"])
-    dataset_types = ["HEx-PHI", "toxic-chat",
+    dataset_types = ["mt-bench", "HEx-PHI", "toxic-chat",
                      "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
-                     "gibberish", "mt-bench", "gpt-jailbreak", "jailbreak"
+                     "gibberish", "gpt-jailbreak", "jailbreak"
                      ]
     data_num_dict = {
         "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
@@ -661,14 +660,10 @@ if __name__ == '__main__':
         "gibberish": {"train": 1000, "validation": 150, "test": 100},
         "mt-bench": {"train": 0, "validation": 80, "test": 0},
         "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
-        "jailbreak": {"train": 450, "validation": 0, "test": 50},
+        "jailbreak": {"train": 400, "validation": 0, "test": 70},
     }
     dataloader = DataLoader()
-    dataset = dataloader.all_in_one_data(["openai", "awesome_chatgpt_prompts",
-        "HEx-PHI", "toxic-chat", "hotpot_qa", "truthful_qa", "jigsaw",
-        "gibberish"], data_num_dict=data_num_dict)
-
-
+    dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
 
     training_data_df = dataset["train"].to_pandas()
     dataloader.detect_duplicates_in_pd_dataset(training_data_df)
