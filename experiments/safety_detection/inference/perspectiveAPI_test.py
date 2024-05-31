@@ -2,32 +2,9 @@ from datasets import load_dataset  # pip install google-api-python-client
 from googleapiclient import discovery
 import json
 from data_operation.data_reader import DataReader
-from datasets import load_metric
-import evaluate
-
-accuracy_metric = load_metric("accuracy")
-precision_metric = load_metric("precision")
-recall_metric = load_metric("recall")
-f1_metric = load_metric("f1")
-roc_auc_metric = evaluate.load("roc_auc")
+from training.training_engine import compute_metrics
 
 GOOGLE_API_KEY = DataReader().read_google_apikey(is_perspective_api=True)
-
-
-def compute_metrics(labels, predictions, probabilities, metrics_average="macro"):
-    accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
-    precision = precision_metric.compute(predictions=predictions, references=labels, average=metrics_average)
-    recall = recall_metric.compute(predictions=predictions, references=labels, average=metrics_average)
-    f1 = f1_metric.compute(predictions=predictions, references=labels, average=metrics_average)
-    roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
-
-    return {
-        "accuracy": accuracy["accuracy"],
-        "precision": precision["precision"],
-        "recall": recall["recall"],
-        "f1": f1["f1"],
-        "roc_auc": roc_auc["roc_auc"]
-    }
 
 
 def perspectiveAPI_test(dataset, threshold=0.7):

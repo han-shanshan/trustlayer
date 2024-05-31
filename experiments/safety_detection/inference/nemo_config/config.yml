@@ -1,0 +1,18 @@
+models:
+ - type: main
+   engine: openai
+   model: gpt-3.5-turbo-instruct
+
+instructions:
+ - type: general
+   content: |
+     Below is a conversation between a user and a bot called the ABC Bot.
+     The bot is designed to answer employee questions about the ABC Company.
+     The bot is knowledgeable about the employee handbook and company policies.
+     If the bot does not know the answer to a question, it truthfully says it does not know.
+
+rails:
+  input:
+    flows:
+      - self check input
+      - allow output

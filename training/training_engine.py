@@ -24,6 +24,22 @@ roc_auc_metric = evaluate.load("roc_auc")
 # roc_auc_metric = load_metric("roc_auc")
 
 
+def compute_metrics(labels, predictions, probabilities, metrics_average="macro"):
+    accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
+    precision = precision_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    recall = recall_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    f1 = f1_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
+
+    return {
+        "accuracy": accuracy["accuracy"],
+        "precision": precision["precision"],
+        "recall": recall["recall"],
+        "f1": f1["f1"],
+        "roc_auc": roc_auc["roc_auc"]
+    }
+
+
 # source: https://jesusleal.io/2021/04/21/Longformer-multilabel-classification/
 def multi_label_metrics(predictions, labels, threshold=0.5):
     # apply sigmoid on predictions which are of shape (batch_size, num_labels)
@@ -89,22 +105,7 @@ class TrainingEngine:
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=1)
         probabilities = sigmoid(logits[:, 1])
-
-        accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
-        precision = precision_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
-        recall = recall_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
-        f1 = f1_metric.compute(predictions=predictions, references=labels, average=self.metrics_average)
-        roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
-
-        return {
-            "accuracy": accuracy["accuracy"],
-            "precision": precision["precision"],
-            "recall": recall["recall"],
-            "f1": f1["f1"],
-            "roc_auc": roc_auc["roc_auc"]
-        }
-
-        # return accuracy.compute(predictions=predictions, references=labels)
+        return compute_metrics(labels, predictions, probabilities, metrics_average=self.metrics_average)
 
     def get_pretrained_model(self, label_dicts, id2label, label2id):
         if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME,

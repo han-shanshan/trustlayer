@@ -23,15 +23,25 @@ class DataReader:
 
     def read_hf_apikey(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, '..', 'utils', 'huggingface.apikey')
+        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'huggingface.apikey')
+        return self.read_data_file(file_path)
+
+    def read_azure_apikey(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'azure_api.key')
+        return self.read_data_file(file_path)
+
+    def read_openai_apikey(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'openai.key')
         return self.read_data_file(file_path)
 
     def read_google_apikey(self, is_perspective_api=False):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         if not is_perspective_api:
-            file_path = os.path.join(dir_path, '..', 'utils', 'google.apikey')
+            file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'google.apikey')
         else:
-            file_path = os.path.join(dir_path, '..', 'utils', 'perspective_api.key')
+            file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'perspective_api.key')
         return self.read_data_file(file_path)
 
     @staticmethod
