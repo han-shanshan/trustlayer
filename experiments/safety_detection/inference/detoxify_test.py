@@ -1,13 +1,27 @@
+from datasets import load_dataset
 from transformers import pipeline
+import os
 
-from experiments.safety_detection.inference.azure_test import prepare_toxic_chat_test_data
+from training.data_loader import DataLoader
 from training.training_engine import compute_metrics
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+
+
+def prepare_toxic_chat_test_data():
+    toxic_chat_data = DataLoader.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
+                                                 remove_jailbreaking=False)
+    # use English && human annotation for testing
+    print(toxic_chat_data)
+    toxic_chat_data = DataLoader().merge_datasets_of_different_phases_and_remove_duplicates([toxic_chat_data])
+    print(toxic_chat_data)
+    return toxic_chat_data
 
 def classify_records(dataset, pipe, threshold=0.5):
     labels = dataset["train"]["label"]
     probabilities = []
     predictions = []
+    counter = 0
     for text in dataset["train"]["text"]:
         result = pipe(text)
         print(f"result = {result}")
@@ -21,6 +35,9 @@ def classify_records(dataset, pipe, threshold=0.5):
             prediction = 0
         predictions.append(prediction)
         probabilities.append(score)
+        counter += 1
+        if counter % 100 == 0:
+            print(f"{counter} done. score = {score}, prediction = {prediction}, text = {text}")
     metrics = compute_metrics(labels, predictions, probabilities)
     print(metrics)
 

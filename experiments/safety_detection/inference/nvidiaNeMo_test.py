@@ -1,5 +1,5 @@
 from nemoguardrails import LLMRails, RailsConfig
-from experiments.safety_detection.inference.azure_test import prepare_toxic_chat_test_data
+from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
 from training.training_engine import compute_metrics
 
 

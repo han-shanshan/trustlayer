@@ -1,6 +1,5 @@
-from datasets import load_dataset
 from data_operation.data_reader import DataReader
-from training.data_loader import DataLoader
+from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
 from training.training_engine import compute_metrics
 from azure.ai.contentsafety import ContentSafetyClient
 from azure.core.credentials import AzureKeyCredential
@@ -59,16 +58,6 @@ def azure_test(dataset):
     metrics = compute_metrics(labels, predictions, probabilities)
     metrics.pop('roc_auc')  # probabilities are fake; just to make the parameters suitable for compute_metrics
     print(metrics)
-
-
-def prepare_toxic_chat_test_data():
-    toxic_chat_data = DataLoader.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
-                                                 remove_jailbreaking=False)
-    # use English && human annotation for testing
-    print(toxic_chat_data)
-    toxic_chat_data = DataLoader().merge_datasets_of_different_phases_and_remove_duplicates([toxic_chat_data])
-    print(toxic_chat_data)
-    return toxic_chat_data
 
 
 if __name__ == '__main__':

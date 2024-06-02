@@ -2,8 +2,8 @@ from datasets import load_dataset  # pip install google-api-python-client
 from googleapiclient import discovery
 import json
 from data_operation.data_reader import DataReader
-from experiments.safety_detection.inference.azure_test import prepare_toxic_chat_test_data
 from training.training_engine import compute_metrics
+from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
 
 GOOGLE_API_KEY = DataReader().read_google_apikey(is_perspective_api=True)
 
