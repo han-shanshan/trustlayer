@@ -62,16 +62,17 @@ class TrustInferenceEngine:
                     max_checkpoint_id = num
         return directory + "/checkpoint-" + str(max_checkpoint_id)
 
-    def inference(self, text, checkpoint_id=None):
-        path = self.get_checkpoint_directory(checkpoint_id)
+    def inference(self, text, checkpoint_id=None, adapter_path=None):
         print(f"self.base_model_name + {self.base_model_name}")
-        print(f"model path = {path}")
         base_model = AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                         problem_type=self.problem_type,
                                                                         num_labels=len(self.config[self.task_name]),
                                                                         id2label=self.config[self.task_name]
                                                                         )
-        base_model.load_adapter(path)
+        if adapter_path is None:
+            adapter_path = self.get_checkpoint_directory(checkpoint_id)
+        base_model.load_adapter(adapter_path)
+        print(f"model path = {adapter_path}")
         if isinstance(text, list):
             encoding = self.tokenizer(text[0], text_pair=text[1], padding=True, truncation=True, return_tensors="pt")
         else:

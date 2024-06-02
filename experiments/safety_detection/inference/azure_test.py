@@ -9,6 +9,7 @@ from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
 
 
 def azure_test(dataset):
+    import time
     key = DataReader().read_azure_apikey()
     end_point = "https://test-for-trustlayer.cognitiveservices.azure.com/"
 
@@ -54,6 +55,7 @@ def azure_test(dataset):
         counter += 1
         if counter % 100 == 0:
             print(f"{counter} done; current task prediction: {prediction}, {text}")
+            time.sleep(10)
 
     metrics = compute_metrics(labels, predictions, probabilities)
     metrics.pop('roc_auc')  # probabilities are fake; just to make the parameters suitable for compute_metrics

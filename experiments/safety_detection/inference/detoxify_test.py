@@ -18,11 +18,11 @@ def prepare_toxic_chat_test_data():
     return toxic_chat_data
 
 def classify_records(dataset, pipe, threshold=0.5):
-    labels = dataset["train"]["label"]
+    labels = dataset["label"]
     probabilities = []
     predictions = []
     counter = 0
-    for text in dataset["train"]["text"]:
+    for text in dataset["text"]:
         result = pipe(text)
         print(f"result = {result}")
         score = 0
