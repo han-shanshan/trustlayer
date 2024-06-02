@@ -39,15 +39,20 @@ class InferenceEngine:
             self.model_name = "Fox"
         else:
             self.model_name = base_model.split("/")[1]
-
-        self.base_model = AutoModelForSequenceClassification.from_pretrained(base_model,
-                                                                        problem_type=self.problem_type,
-                                                                        num_labels=len(self.config[self.task_name]),
-                                                                        id2label=self.config[self.task_name]
-                                                                        )
+        print(f"base_model = {base_model}")
         if adapter_path is not None:
-            self.base_model.load_adapter(adapter_path)
-        print(f"adapter_path = {adapter_path}")
+            self.model = AutoModelForSequenceClassification.from_pretrained(adapter_path,
+                                                                                 problem_type=self.problem_type,
+                                                                                 num_labels=len(
+                                                                                     self.config[self.task_name]),
+                                                                                 id2label=self.config[self.task_name]
+                                                                                 )
+        else:
+            self.model = AutoModelForSequenceClassification.from_pretrained(base_model,
+                                                                                 problem_type=self.problem_type,
+                                                                                 num_labels=len(self.config[self.task_name]),
+                                                                                 id2label=self.config[self.task_name]
+                                                                                 )
 
     def set_task(self, task_type):
         self.task_name = task_type
@@ -69,14 +74,17 @@ class InferenceEngine:
     #                 max_checkpoint_id = num
     #     return directory + "/checkpoint-" + str(max_checkpoint_id)
 
+    """
+    https://huggingface.co/docs/peft/en/quicktour
+    """
     def inference(self, text):
         if isinstance(text, list):
             encoding = self.tokenizer(text[0], text_pair=text[1], padding=True, truncation=True, return_tensors="pt")
         else:
             encoding = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt")
         # encoding = self.tokenizer(text, return_tensors="pt")
-        encoding = {k: v.to(self.base_model.device) for k, v in encoding.items()}
-        outputs = self.base_model(**encoding)
+        encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
+        outputs = self.model(**encoding)
         logits = outputs.logits
 
         if self.problem_type == "multi_label_classification":
@@ -89,7 +97,8 @@ class InferenceEngine:
             predicted_label = [self.config[self.task_name][str(idx)] for idx, label in enumerate(predictions) if
                                label == 1.0]
         else:
-            predicted_label_idx = torch.argmax(logits, dim=-1).item()
+            predicted_label_idx = np.argmax(logits, axis=1).item()
+            print(f"logits = {logits}, label = {predicted_label_idx}")
             predicted_label = self.config[self.task_name][str(predicted_label_idx)]
 
         return predicted_label
@@ -100,8 +109,8 @@ class InferenceEngine:
         if pair_texts is None:
             for i in range(len(texts)):
                 encoding = self.tokenizer(texts[i], padding=True, truncation=True, return_tensors="pt")
-                encoding = {k: v.to(self.base_model.device) for k, v in encoding.items()}
-                outputs = self.base_model(**encoding)
+                encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
+                outputs = self.model(**encoding)
                 logits = outputs.logits
                 predicted_label_idx = torch.argmax(logits, dim=-1).item()
                 probability = sigmoid(logits[:, 1]).item()
@@ -110,4 +119,3 @@ class InferenceEngine:
 
             metrics = compute_metrics(labels, predictions, probabilities)
             print(f"metrics = {metrics}")
-

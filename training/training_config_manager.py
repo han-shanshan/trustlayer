@@ -28,22 +28,22 @@ class TrainingConfigManager:
                 warmup_ratio=0.03,  # warmup ratio based on QLoRA paper
                 lr_scheduler_type="linear",
                 report_to=["wandb"],
-                load_best_model_at_end = True
+                load_best_model_at_end=True
             )
 
         return TrainingArguments(
-                output_dir=output_dir,
-                evaluation_strategy="epoch",
-                save_strategy="epoch",
-                learning_rate=2e-5,
-                per_device_train_batch_size=batch_size,
-                per_device_eval_batch_size=batch_size,
-                num_train_epochs=20,
-                weight_decay=0.01,
-                load_best_model_at_end=True,
-                # metric_for_best_model=metric_name,
-                # push_to_hub=True,
-            )
+            output_dir=output_dir,
+            evaluation_strategy="epoch",
+            save_strategy="epoch",
+            learning_rate=2e-5,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            num_train_epochs=20,
+            weight_decay=0.01,
+            load_best_model_at_end=True,
+            # metric_for_best_model=metric_name,
+            # push_to_hub=True,
+        )
 
     def get_lora_config(self):
         if self.model in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
@@ -55,6 +55,7 @@ class TrainingConfigManager:
                 bias="none",
                 task_type=TaskType.SEQ_CLS
             )
+        # peft_config = LoraConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, r=8, lora_alpha=32, lora_dropout=0.1)
         return LoraConfig(
             r=16,
             lora_alpha=32,
