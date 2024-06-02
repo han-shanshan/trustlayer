@@ -1,4 +1,8 @@
 {
+    "all_in_one_unsafe_contents": {
+        "0": "safe",
+        "1": "unsafe"
+    },
     "semantic": {
         "0": "anger",
         "1": "anticipation",

@@ -1,5 +1,7 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from scipy.special import expit as sigmoid
+from training.training_engine import compute_metrics
 from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
     HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
     FOX_BASE_GPU
@@ -67,7 +69,7 @@ class InferenceEngine:
     #                 max_checkpoint_id = num
     #     return directory + "/checkpoint-" + str(max_checkpoint_id)
 
-    def inference(self, text, adapter_path=None):
+    def inference(self, text):
         if isinstance(text, list):
             encoding = self.tokenizer(text[0], text_pair=text[1], padding=True, truncation=True, return_tensors="pt")
         else:
@@ -91,3 +93,21 @@ class InferenceEngine:
             predicted_label = self.config[self.task_name][str(predicted_label_idx)]
 
         return predicted_label
+
+    def evaluation(self, texts: list, labels: list, pair_texts: list = None):
+        predictions = []
+        probabilities = []
+        if pair_texts is None:
+            for i in range(len(texts)):
+                encoding = self.tokenizer(texts[i], padding=True, truncation=True, return_tensors="pt")
+                encoding = {k: v.to(self.base_model.device) for k, v in encoding.items()}
+                outputs = self.base_model(**encoding)
+                logits = outputs.logits
+                predicted_label_idx = torch.argmax(logits, dim=-1).item()
+                probability = sigmoid(logits[:, 1]).item()
+                predictions.append(predicted_label_idx)
+                probabilities.append(probability)
+
+            metrics = compute_metrics(labels, predictions, probabilities)
+            print(f"metrics = {metrics}")
+
