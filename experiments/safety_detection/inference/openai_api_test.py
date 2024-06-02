@@ -1,5 +1,7 @@
 from datasets import load_dataset
 from data_operation.data_reader import DataReader
+from experiments.safety_detection.inference.azure_test import prepare_toxic_chat_test_data
+from training.data_loader import DataLoader
 from training.training_engine import compute_metrics
 import requests
 
@@ -11,10 +13,11 @@ def openai_test(dataset):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"
     }
-    labels = dataset["train"]["label"][:5]
+    labels = dataset["label"]
     probabilities = []
     predictions = []
-    for text in dataset["train"]["text"][:5]:
+    counter = 0
+    for text in dataset["text"]:
         response = requests.post(url, json={"input": text}, headers=headers)
         response = response.json()
         score = 0
@@ -27,11 +30,15 @@ def openai_test(dataset):
                 score = s
         predictions.append(prediction)
         probabilities.append(score)
+        counter += 1
+        if counter % 100 == 0:
+            print(f"{counter} done; current task prediction: {prediction}, {text}")
     metrics = compute_metrics(labels, predictions, probabilities)
     print(metrics)
 
 
 if __name__ == '__main__':
-    dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
-    print(dataset)
+    # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
+    dataset = prepare_toxic_chat_test_data()
     openai_test(dataset=dataset)
+    print(f"OpenAI Experiments Done.")

@@ -2,6 +2,7 @@ from datasets import load_dataset  # pip install google-api-python-client
 from googleapiclient import discovery
 import json
 from data_operation.data_reader import DataReader
+from experiments.safety_detection.inference.azure_test import prepare_toxic_chat_test_data
 from training.training_engine import compute_metrics
 
 GOOGLE_API_KEY = DataReader().read_google_apikey(is_perspective_api=True)
@@ -18,12 +19,12 @@ def perspectiveAPI_test(dataset, threshold=0.7):
         static_discovery=False,
     )
 
-    labels = dataset["train"]["label"]
+    labels = dataset["label"]
     probabilities = []
     predictions = []
     counter = 0
 
-    for text in dataset["train"]["text"]:
+    for text in dataset["text"]:
         counter += 1
         analyze_request = {
             'comment': {'text': text},
@@ -44,12 +45,13 @@ def perspectiveAPI_test(dataset, threshold=0.7):
         if counter == 55:
             time.sleep(60)
             counter = 0
-        # print(f"{text}, \n prediction_label = {prediction_label}")
+            print(f"{text}, \n prediction_label = {prediction_label}")
     metrics = compute_metrics(labels, predictions, probabilities)
     print(metrics)
 
 
 if __name__ == '__main__':
-    dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
-    print(dataset)
+    # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
+    dataset = prepare_toxic_chat_test_data()
     perspectiveAPI_test(dataset=dataset, threshold=0.5)
+    print(f"PerspectiveAPI Experiments Done.")

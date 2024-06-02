@@ -1,5 +1,6 @@
 from datasets import load_dataset
 from data_operation.data_reader import DataReader
+from training.data_loader import DataLoader
 from training.training_engine import compute_metrics
 from azure.ai.contentsafety import ContentSafetyClient
 from azure.core.credentials import AzureKeyCredential
@@ -14,10 +15,11 @@ def azure_test(dataset):
 
     client = ContentSafetyClient(end_point, AzureKeyCredential(key))  # Create an Azure AI Content Safety client
 
-    labels = dataset["train"]["label"][:5]
+    labels = dataset["label"]
     probabilities = []
     predictions = []
-    for text in dataset["train"]["text"][:5]:
+    counter = 0
+    for text in dataset["text"]:
         request = AnalyzeTextOptions(text=text)
         try:
             response = client.analyze_text(request)
@@ -28,9 +30,7 @@ def azure_test(dataset):
                 print(f"Error message: {e.error.message}")
                 raise
             print(e)
-            raise
-
-        print(f"response = {response}")
+            raise ValueError("Error")
 
         hate_result = next(item for item in response.categories_analysis if item.category == TextCategory.HATE)
         self_harm_result = next(
@@ -46,19 +46,33 @@ def azure_test(dataset):
             unsafe_severity = sexual_result.severity
         if violence_result and violence_result.severity > unsafe_severity:
             unsafe_severity = violence_result.severity
+        prediction = 0
         if unsafe_severity > 0:
-            predictions.append(1)
-        else:
-            predictions.append(0)
+            prediction = 1
+        predictions.append(prediction)
         probabilities.append(0)  # fake
-        print(f"{unsafe_severity}, {text} \n =========================\n")
+        # print(f"{unsafe_severity}, {text} \n =========================\n")
+        counter += 1
+        if counter % 100 == 0:
+            print(f"{counter} done; current task prediction: {prediction}, {text}")
 
     metrics = compute_metrics(labels, predictions, probabilities)
     metrics.pop('roc_auc')  # probabilities are fake; just to make the parameters suitable for compute_metrics
     print(metrics)
 
 
+def prepare_toxic_chat_test_data():
+    toxic_chat_data = DataLoader.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
+                                                 remove_jailbreaking=False)
+    # use English && human annotation for testing
+    print(toxic_chat_data)
+    toxic_chat_data = DataLoader().merge_datasets_of_different_phases_and_remove_duplicates([toxic_chat_data])
+    print(toxic_chat_data)
+    return toxic_chat_data
+
+
 if __name__ == '__main__':
-    dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
-    print(dataset)
-    azure_test(dataset=dataset)
+    # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
+    dataset = prepare_toxic_chat_test_data()
+    azure_test(dataset)
+    print(f"Azure Experiments Done.")

@@ -168,8 +168,8 @@ class DataLoader:
         if dataset_type == "HEx-PHI":
             sub_dataset = self.load_HEx_PHI_data()
         elif dataset_type == "toxic-chat":  # toxic-chat0124 is better than toxic-chat1123
-            sub_dataset = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
-                                                           remove_jailbreaking=False)["train"]
+            sub_dataset = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
+                                                       remove_jailbreaking=False)["train"]
             # the quality is hard to evaluate
         elif dataset_type == "openai":  # this dataset has duplicates; should be removed with str.strip()
             sub_dataset = load_dataset("mmathys/openai-moderation-api-evaluation")["train"]
@@ -281,13 +281,12 @@ class DataLoader:
         jigsaw_comment_dataset = self._load_jigsaw_comment_dataset()
         jigsaw_unindended_bias_data = self._load_jigsaw_unindended_bias_dataset()
         toxicity3M_dataset = self._load_toxicity_data_3M()
-        toxic_chat_data_subset1 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
-        toxic_chat_data_subset2 = self._process_toxic_chat_subdata(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
+        # toxic_chat_data_subset1 = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
+        toxic_chat_data_subset2 = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
 
         merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates(
             [jigsaw_comment_dataset, jigsaw_unindended_bias_data,
-             toxic_chat_data_subset1, toxic_chat_data_subset2,
-             toxicity3M_dataset])
+             toxic_chat_data_subset2, toxicity3M_dataset])
         return merged_dataset
 
     def load_toxic_sophisticated_data(self, desired_number=None):
@@ -361,7 +360,7 @@ class DataLoader:
                 if text in unique_texts:
                     if unique_texts[text] is not None and unique_texts[text] != label:
                         unique_texts[text] = None  # mark conflicts
-                        # print(f"conflict founded ---------")
+                        print(f"conflict founded ---------")
                 else:
                     unique_texts[text] = label
 
@@ -489,7 +488,7 @@ class DataLoader:
         return filtered_data.remove_columns(["lang"])
 
     @staticmethod
-    def _process_toxic_chat_subdata(toxic_chat_data, remove_jailbreaking=True):
+    def process_toxic_chat_data(toxic_chat_data, remove_jailbreaking=True):
         from langdetect import detect
         import re
 
@@ -498,15 +497,12 @@ class DataLoader:
                    not re.compile(
                        r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
                        r'-+*/]\s*\d+\s*=\s*))$').match(
-                       example["user_input"]) \
-                   and detect(example["user_input"]) == 'en'
+                       example["user_input"]) and detect(example["user_input"]) == 'en'
 
         def remove_non_english_inputs(example):
             return example['human_annotation'] and not re.compile(
                 r'^(\d+[-+*/]\d+ = \d+;\s*)*(\d+(\s*[-+*/]\s*\d+)+ = \?|(\d+\s*[-+*/]\s*\d+\s*\?)|(\d+\s*['
-                r'-+*/]\s*\d+\s*=\s*))$').match(
-                example["user_input"]) \
-                   and detect(example["user_input"]) == 'en'
+                r'-+*/]\s*\d+\s*=\s*))$').match(example["user_input"]) and detect(example["user_input"]) == 'en'
 
         if remove_jailbreaking:
             filter_function = remove_jailbreaking_and_non_english_inputs
@@ -523,7 +519,6 @@ class DataLoader:
                 toxic_chat_data[split] = toxic_chat_data[split].rename_column("user_input", "text")
             return toxic_chat_data
         else:
-
             toxic_chat_data = toxic_chat_data.map(lambda example: {'text': example['user_input'],
                                                                    'label': 0 if (example['toxicity'] == 0 and example[
                                                                        'jailbreaking'] == 0) else 1})
