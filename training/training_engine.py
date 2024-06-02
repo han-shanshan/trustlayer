@@ -65,6 +65,16 @@ class CustomCallback(TrainerCallback):
         print(f"Epoch {state.epoch} ended. Custom logic here.")
 
 
+def get_tokenizer(model, base_model_name):
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+    if base_model_name in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
+        # tokenizer.pad_token = tokenizer.eos_token
+        # tokenizer.padding_side = 'right'  # to prevent warnings
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = model.config.eos_token_id
+    return tokenizer
+
+
 class TrainingEngine:
     def __init__(self, base_model_name, task_name, config=None):
         self.base_model_name = base_model_name
@@ -127,15 +137,6 @@ class TrainingEngine:
         elif self.task_name in [HALLUCINATION_REASONING_TASK_NAME]:  # add explanations for inference results
             pass
 
-    def get_tokenizer(self, model):
-        tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
-        if self.base_model_name in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
-            # tokenizer.pad_token = tokenizer.eos_token
-            # tokenizer.padding_side = 'right'  # to prevent warnings
-            tokenizer.pad_token = tokenizer.eos_token
-            model.config.pad_token_id = model.config.eos_token_id
-        return tokenizer
-
     def train(self, desired_total_data_n=None):
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
@@ -144,19 +145,12 @@ class TrainingEngine:
         print(f"sample data = {dataset['train'][0]}")
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
-
         print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
-        tokenizer = self.get_tokenizer(model)
+        tokenizer = get_tokenizer(model, base_model_name=self.base_model_name)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
-
         config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
-        print("=======start loading metric=========")
-        # metric = evaluate.load("accuracy")
-        # Define LoRA Config
         model = get_peft_model(model, config_manager.get_lora_config())
-        print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
-        # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
         output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name
 
         peft_trainer = Trainer(
@@ -172,4 +166,3 @@ class TrainingEngine:
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
         print("Test Results:", test_results)
         model.save_pretrained(output_dir + "-final")
-

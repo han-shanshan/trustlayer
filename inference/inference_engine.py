@@ -1,7 +1,8 @@
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoModelForSequenceClassification
 from scipy.special import expit as sigmoid
-from training.training_engine import compute_metrics
+from data_operation.data_processor import DataProcessor
+from training.training_engine import compute_metrics, get_tokenizer
 from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
     HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
     FOX_BASE_GPU
@@ -29,7 +30,6 @@ class InferenceEngine:
             with open(general_config_file_path, 'r') as file:
                 self.config = json.load(file)
         print(f"config = {self.config}")
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model)
         if problem_type is not None and problem_type in ["single_label_classification", "multi_label_classification"]:
             self.problem_type = problem_type
         elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME,
@@ -55,6 +55,7 @@ class InferenceEngine:
                                                                                  num_labels=len(self.config[self.task_name]),
                                                                                  id2label=self.config[self.task_name]
                                                                                  )
+        self.tokenizer = get_tokenizer(self.model, base_model_name=base_model)
         self.model.to(self.device)
 
     def set_task(self, task_type):
@@ -106,19 +107,22 @@ class InferenceEngine:
 
         return predicted_label
 
-    def evaluation(self, texts: list, labels: list, pair_texts: list = None):
+    def evaluate(self, dataset, phase="train"):
+        data_processor = DataProcessor(task_name=self.task_name)
+        encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=self.tokenizer)
+        labels = dataset[phase]["label"]
+        encoded_dataset = encoded_dataset[phase]
         predictions = []
         probabilities = []
-        if pair_texts is None:
-            for i in range(len(texts)):
-                encoding = self.tokenizer(texts[i], padding=True, truncation=True, return_tensors="pt")
-                encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
-                outputs = self.model(**encoding)
-                logits = outputs.logits
-                predicted_label_idx = torch.argmax(logits, dim=-1).item()
-                probability = sigmoid(logits[:, 1].cpu()).item()
-                predictions.append(predicted_label_idx)
-                probabilities.append(probability)
 
-            metrics = compute_metrics(labels, predictions, probabilities)
-            print(f"metrics = {metrics}")
+        for i in range(len(encoded_dataset)):
+            encoding = {k: v.to(self.model.device) for k, v in encoded_dataset[i].items()}
+            outputs = self.model(**encoding)
+            logits = outputs.logits
+            predicted_label_idx = torch.argmax(logits, dim=-1).item()
+            probability = sigmoid(logits[:, 1].cpu()).item()
+            predictions.append(predicted_label_idx)
+            probabilities.append(probability)
+
+        metrics = compute_metrics(labels, predictions, probabilities)
+        print(f"metrics = {metrics}")
