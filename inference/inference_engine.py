@@ -19,6 +19,8 @@ https://github.com/huggingface/peft/discussions/661
 class InferenceEngine:
     def __init__(self, default_task, base_model, adapter_path=None, inference_config=None, problem_type=None):
         self.task_name = default_task
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
         if inference_config is not None:
             self.config = inference_config
         else:
@@ -53,6 +55,7 @@ class InferenceEngine:
                                                                                  num_labels=len(self.config[self.task_name]),
                                                                                  id2label=self.config[self.task_name]
                                                                                  )
+        self.model.to(self.device)
 
     def set_task(self, task_type):
         self.task_name = task_type
@@ -113,7 +116,7 @@ class InferenceEngine:
                 outputs = self.model(**encoding)
                 logits = outputs.logits
                 predicted_label_idx = torch.argmax(logits, dim=-1).item()
-                probability = sigmoid(logits[:, 1]).item()
+                probability = sigmoid(logits[:, 1].cpu()).item()
                 predictions.append(predicted_label_idx)
                 probabilities.append(probability)
 
