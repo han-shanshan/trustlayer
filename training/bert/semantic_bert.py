@@ -1,6 +1,5 @@
-from training.constants import SEMANTIC_TASK_NAME, MODEL_NAME_BERT_BASE
-from training.trust_inference_engine import TrustInferenceEngine
-from training.training_engine import TrainingEngine
+from utils.constants import MODEL_NAME_BERT_BASE
+from inference.inference_engine import InferenceEngine
 
 TASK_NAME = "semantic"
 MODEL_NAME = MODEL_NAME_BERT_BASE  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
@@ -14,5 +13,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))

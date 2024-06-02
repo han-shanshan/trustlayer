@@ -1,9 +1,6 @@
-from training.constants import SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    MODEL_NAME_TINYLAMMA, TOXICITY_TASK_NAME, HALLUCINATION_TASK_NAME, TOPIC_TASK_NAME
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import MODEL_NAME_TINYLAMMA, TOPIC_TASK_NAME
 from training.training_engine import TrainingEngine
 import os
-import torch
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 

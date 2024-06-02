@@ -1,8 +1,8 @@
 import numpy as np
 from datasets import concatenate_datasets, DatasetDict
-from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
+from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
-from training.data_loader import DataLoader
+from data_operation.data_loader import DataLoader
 
 
 class DataProcessor:

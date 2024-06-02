@@ -1,6 +1,5 @@
-from training.constants import GIBBERISH_TASK_NAME, MODEL_NAME_BERT_BASE
-from training.trust_inference_engine import TrustInferenceEngine
-from training.training_engine import TrainingEngine
+from utils.constants import GIBBERISH_TASK_NAME, MODEL_NAME_BERT_BASE
+from inference.inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
@@ -17,5 +16,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))

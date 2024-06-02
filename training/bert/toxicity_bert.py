@@ -1,5 +1,4 @@
-from training.constants import TOXICITY_TASK_NAME, MODEL_NAME_BERT_BASE
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import TOXICITY_TASK_NAME, MODEL_NAME_BERT_BASE
 from training.training_engine import TrainingEngine
 import os
 

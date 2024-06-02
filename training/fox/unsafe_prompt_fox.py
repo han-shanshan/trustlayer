@@ -1,8 +1,6 @@
-from training.constants import UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU
 from training.training_engine import TrainingEngine
 import os
-import torch
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 

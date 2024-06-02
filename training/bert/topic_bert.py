@@ -1,8 +1,6 @@
-from training.constants import TOPIC_TASK_NAME, MODEL_NAME_BERT_BASE
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import TOPIC_TASK_NAME, MODEL_NAME_BERT_BASE
+from inference.inference_engine import InferenceEngine
 import os
-
-from training.training_engine import TrainingEngine
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
@@ -13,5 +11,5 @@ if __name__ == '__main__':
     # trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
     # trainer.train()
     text = "i'm happy hahaha"
-    inference_engine = TrustInferenceEngine(default_task=TOPIC_TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TOPIC_TASK_NAME)
     print(inference_engine.inference(text))

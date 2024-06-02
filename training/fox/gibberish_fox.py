@@ -1,9 +1,6 @@
-from training.constants import GIBBERISH_TASK_NAME, FOX_BASE_GPU
-from training.trust_inference_engine import TrustInferenceEngine
-from training.training_engine import TrainingEngine
+from utils.constants import GIBBERISH_TASK_NAME, FOX_BASE_GPU
+from inference.inference_engine import InferenceEngine
 import os
-import torch
-
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
@@ -19,5 +16,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))

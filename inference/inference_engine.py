@@ -1,6 +1,6 @@
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
+from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
     HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 import torch
 import json
@@ -14,7 +14,7 @@ https://github.com/huggingface/peft/discussions/661
 """
 
 
-class TrustInferenceEngine:
+class InferenceEngine:
     def __init__(self, default_task, config=None, problem_type=None):
         self.task_name = default_task
         if config is not None:

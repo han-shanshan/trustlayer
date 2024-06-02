@@ -1,7 +1,7 @@
 from transformers import pipeline
 from data_operation.data_reader import DataReader
 import torch
-from training.constants import FOX_BASE_GPU
+from utils.constants import FOX_BASE_GPU
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"

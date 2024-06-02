@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
-from training.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
+from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
     HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 from utils.file_operations import write_a_dictionary_to_file
 
@@ -133,7 +133,7 @@ class DataLoader:
                 meta["test_label_1"], meta["test_label_0"], meta["test_total"] = self.count_label_numbers(sub_data)
             dataset_label_counter_meta[dataset_type] = meta
 
-        write_a_dictionary_to_file(file_name="dataset_label_counter_meta.txt", dictionary=dataset_label_counter_meta)
+        write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt", dictionary=dataset_label_counter_meta)
 
         datasets = DatasetDict({
             'train': training_dataset,

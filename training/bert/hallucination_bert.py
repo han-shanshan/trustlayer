@@ -1,6 +1,5 @@
-from training.constants import SEMANTIC_TASK_NAME, HALLUCINATION_TASK_NAME, MODEL_NAME_BERT_BASE
-from training.trust_inference_engine import TrustInferenceEngine
-from training.training_engine import TrainingEngine
+from utils.constants import HALLUCINATION_TASK_NAME, MODEL_NAME_BERT_BASE
+from inference.inference_engine import InferenceEngine
 import os
 import torch
 
@@ -22,5 +21,5 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference(text))

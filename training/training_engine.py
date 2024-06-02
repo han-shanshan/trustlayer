@@ -7,10 +7,10 @@ from peft import get_peft_model
 import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
-from training.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
+from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
     TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
     CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
-from training.data_processor import DataProcessor
+from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
 from scipy.special import expit as sigmoid

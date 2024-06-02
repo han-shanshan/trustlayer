@@ -1,11 +1,6 @@
-from training.constants import TOXICITY_TASK_NAME, FOX_BASE_GPU
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import TOXICITY_TASK_NAME, FOX_BASE_GPU
 from training.training_engine import TrainingEngine
 import os
-import torch
-import json
-import wandb
-
 
 TASK_NAME = TOXICITY_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"

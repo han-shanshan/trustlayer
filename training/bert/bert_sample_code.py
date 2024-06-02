@@ -1,10 +1,9 @@
 import numpy as np
-import evaluate
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model, TaskType
-from training.constants import MODEL_NAME_BERT_BASE
+from utils.constants import MODEL_NAME_BERT_BASE
 
 
 def tokenize_function(examples):

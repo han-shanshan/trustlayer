@@ -1,7 +1,7 @@
 import numpy as np
 from datasets import DatasetDict, Dataset
-from training.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
-from training.data_processor import DataProcessor
+from utils.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
+from data_operation.data_processor import DataProcessor
 from utils.translator import Translator
 
 

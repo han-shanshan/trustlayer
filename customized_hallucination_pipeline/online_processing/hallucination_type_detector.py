@@ -1,10 +1,8 @@
 from typing import Union, Optional
 
-from transformers import pipeline
-
 from customized_hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
-from training.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
+from inference.inference_engine import InferenceEngine
 from safety_detection.securellm.detector_base import BaseTrustDetector
 
 
@@ -13,8 +11,8 @@ class HallucinationTypeDetector(BaseTrustDetector):
         super().__init__(config)
         self.res = None
         print(f"config = {config}")
-        self.inference_engine = TrustInferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
-                                                     problem_type="single_label_classification")
+        self.inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
+                                                problem_type="single_label_classification")
 
     def get_detection_results(self, output, reference_text=None):
         result = self.inference_engine.inference([reference_text, output])

@@ -1,8 +1,7 @@
-from training.constants import HALLUCINATION_TASK_NAME, FOX_BASE_GPU
-from training.trust_inference_engine import TrustInferenceEngine
+from utils.constants import HALLUCINATION_TASK_NAME, FOX_BASE_GPU
+from inference.inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 import os
-import torch
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
@@ -21,5 +20,5 @@ if __name__ == '__main__':
     trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = TrustInferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME)
     print(inference_engine.inference([text, text]))

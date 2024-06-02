@@ -1,6 +1,6 @@
-from peft import LoraConfig, get_peft_model, TaskType
+from peft import LoraConfig, TaskType
 from transformers import TrainingArguments
-from training.constants import MODEL_NAME_TINYLAMMA, UNSAFE_PROMPT_TASK_NAME, FOX_BASE_GPU
+from utils.constants import MODEL_NAME_TINYLAMMA, FOX_BASE_GPU
 
 
 class TrainingConfigManager:

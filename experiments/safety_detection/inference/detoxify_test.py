@@ -2,7 +2,7 @@ from datasets import load_dataset
 from transformers import pipeline
 import os
 
-from training.data_loader import DataLoader
+from data_operation.data_loader import DataLoader
 from training.training_engine import compute_metrics
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4'
@@ -23,7 +23,7 @@ def classify_records(dataset, pipe, threshold=0.5):
     predictions = []
     counter = 0
     for text in dataset["text"]:
-        result = pipe(text)
+        result = pipe(text, padding=True, truncation=True)
         print(f"result = {result}")
         score = 0
         for d in result[0]:
