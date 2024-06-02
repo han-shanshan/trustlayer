@@ -17,5 +17,6 @@ if __name__ == '__main__':
     # trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(default_task=TASK_NAME, base_model=FOX_BASE_GPU,
+                                       adapter_path="/fox_adapters/checkpoint-23000-all_in_one_unsafe_contents-final/")
     print(inference_engine.inference([text]))

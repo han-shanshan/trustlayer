@@ -1,6 +1,4 @@
 {
-    "base_model_name_or_path": "/raid/user/models/femma_1b_stage3_aggressive_v2/checkpoint-23000",
-
     "semantic": {
         "0": "anger",
         "1": "anticipation",
