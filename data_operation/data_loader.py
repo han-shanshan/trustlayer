@@ -142,15 +142,15 @@ class DataLoader:
         #     print(f"sample data = {data[0]}")
 
     def process_a_subdataset_for_all_in_one_task(self, dataset_type):
-        dataset = self.get_a_dataset_for_all_in_one_task(dataset_type)
-        dataset = self.drop_duplicates_in_a_dataset(dataset, col_name="text")
+        task_data = self.get_a_dataset_for_all_in_one_task(dataset_type)
+        task_data = self.drop_duplicates_in_a_dataset(task_data, col_name="text")
         if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw",
-                            "awesome_chatgpt_prompts", "jailbreak", "gpt-jailbreak"]:
-            dataset = dataset.remove_columns([col for col in dataset.column_names if col not in ["text", "label"]])
-        print(f"{dataset_type}: {dataset}")
-        print(f"sample data = {dataset[0]}\n=====================\n")
-        dataset = dataset.filter(lambda example: example['label'] is not None and example["text"] is not None)
-        return dataset
+                            "awesome_chatgpt_prompts", "jailbreak", "gpt-jailbreak", "toxic-chat"]:
+            task_data = task_data.remove_columns([col for col in task_data.column_names if col not in ["text", "label"]])
+        print(f"{dataset_type}: {task_data}")
+        print(f"sample data = {task_data[0]}\n=====================\n")
+        task_data = task_data.filter(lambda example: example['label'] is not None and example["text"] is not None)
+        return task_data
 
     @staticmethod
     def remove_duplicates_between_datasets(dataset_list):
@@ -172,7 +172,8 @@ class DataLoader:
             sub_dataset = self.load_HEx_PHI_data()
         elif dataset_type == "toxic-chat":  # toxic-chat0124 is better than toxic-chat1123
             sub_dataset = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
-                                                       remove_jailbreaking=False)["train"]
+                                                       remove_jailbreaking=False)
+            sub_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates([sub_dataset])
             # the quality is hard to evaluate
         elif dataset_type == "openai":  # this dataset has duplicates; should be removed with str.strip()
             sub_dataset = load_dataset("mmathys/openai-moderation-api-evaluation")["train"]
@@ -284,7 +285,6 @@ class DataLoader:
         jigsaw_comment_dataset = self._load_jigsaw_comment_dataset()
         jigsaw_unindended_bias_data = self._load_jigsaw_unindended_bias_dataset()
         toxicity3M_dataset = self._load_toxicity_data_3M()
-        # toxic_chat_data_subset1 = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat1123"))
         toxic_chat_data_subset2 = self.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"))
 
         merged_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates(
@@ -492,6 +492,7 @@ class DataLoader:
 
     @staticmethod
     def process_toxic_chat_data(toxic_chat_data, remove_jailbreaking=True):
+        print(f"original dataset = {toxic_chat_data}")
         from langdetect import detect
         import re
 

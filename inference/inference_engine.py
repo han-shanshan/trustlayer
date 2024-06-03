@@ -107,11 +107,10 @@ class InferenceEngine:
 
         return predicted_label
 
-    def evaluate(self, dataset, phase="train"):
+    def evaluate(self, dataset):
         data_processor = DataProcessor(task_name=self.task_name)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=self.tokenizer)
-        labels = dataset[phase]["label"]
-        encoded_dataset = encoded_dataset[phase]
+        labels = dataset["label"]
         predictions = []
         probabilities = []
 

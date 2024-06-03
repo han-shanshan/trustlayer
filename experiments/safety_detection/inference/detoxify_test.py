@@ -9,11 +9,8 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 
 def prepare_toxic_chat_test_data():
-    toxic_chat_data = DataLoader.process_toxic_chat_data(load_dataset("lmsys/toxic-chat", "toxicchat0124"),
-                                                 remove_jailbreaking=False)
+    toxic_chat_data = DataLoader().process_a_subdataset_for_all_in_one_task(dataset_type="toxic-chat")
     # use English && human annotation for testing
-    print(toxic_chat_data)
-    toxic_chat_data = DataLoader().merge_datasets_of_different_phases_and_remove_duplicates([toxic_chat_data])
     print(toxic_chat_data)
     return toxic_chat_data
 
