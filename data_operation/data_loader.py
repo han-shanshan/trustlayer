@@ -87,15 +87,7 @@ class DataLoader:
 
         for i in range(len(dataset_types)):
             dataset_type = dataset_types[i]
-            dataset = self.get_a_dataset_for_all_in_one_task(dataset_type)
-            dataset = self.drop_duplicates_in_a_dataset(dataset, col_name="text")
-
-            if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw",
-                                "awesome_chatgpt_prompts", "jailbreak", "gpt-jailbreak"]:
-                dataset = dataset.remove_columns([col for col in dataset.column_names if col not in ["text", "label"]])
-            print(f"{dataset_type}: {dataset}")
-            print(f"sample data = {dataset[0]}\n=====================\n")
-            dataset = dataset.filter(lambda example: example['label'] is not None and example["text"] is not None)
+            dataset = self.process_a_subdataset_for_all_in_one_task(dataset_type)
             dataset_list.append(dataset.shuffle(seed=0))
 
         dataset_list = self.remove_duplicates_between_datasets(dataset_list)
@@ -148,6 +140,17 @@ class DataLoader:
         #     data = load_dataset("lmsys/lmsys-chat-1m")["train"]
         #     print(data)
         #     print(f"sample data = {data[0]}")
+
+    def process_a_subdataset_for_all_in_one_task(self, dataset_type):
+        dataset = self.get_a_dataset_for_all_in_one_task(dataset_type)
+        dataset = self.drop_duplicates_in_a_dataset(dataset, col_name="text")
+        if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw",
+                            "awesome_chatgpt_prompts", "jailbreak", "gpt-jailbreak"]:
+            dataset = dataset.remove_columns([col for col in dataset.column_names if col not in ["text", "label"]])
+        print(f"{dataset_type}: {dataset}")
+        print(f"sample data = {dataset[0]}\n=====================\n")
+        dataset = dataset.filter(lambda example: example['label'] is not None and example["text"] is not None)
+        return dataset
 
     @staticmethod
     def remove_duplicates_between_datasets(dataset_list):
@@ -636,19 +639,17 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    # DataLoader().all_in_one_data([
-    #     "HEx-PHI", "toxic-chat", "openai", "hotpot_qa", "truthful_qa",
-    #     "awesome_chatgpt_prompts", "jigsaw",
-    #     "gibberish"])
-    dataset_types = ["mt-bench", "HEx-PHI", "toxic-chat",
-                     "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
-                     "gibberish", "gpt-jailbreak", "jailbreak"
+    dataset_types = ["mt-bench", "HEx-PHI",  # "toxic-chat",
+                     "openai", #"hotpot_qa",
+                     "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
+                     "gibberish", "gpt-jailbreak", # "jailbreak"
                      ]
+
     data_num_dict = {
         "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-        "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+        # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
         "openai": {"train": 160, "validation": 1500, "test": 0},
-        "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
+        # "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
         "truthful_qa": {"train": 500, "validation": 100, "test": 100},
         "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
         "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
