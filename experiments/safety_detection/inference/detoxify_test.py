@@ -1,7 +1,5 @@
-from datasets import load_dataset
 from transformers import pipeline
 import os
-
 from data_operation.data_loader import DataLoader
 from training.training_engine import compute_metrics
 
@@ -65,5 +63,5 @@ if __name__ == '__main__':
     # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
     dataset = prepare_toxic_chat_test_data()
     print(dataset)
-    detoxify_bert_test(dataset)
+    detoxify_roberta_test(dataset)
     print(f"Detoxify Experiments Done.")

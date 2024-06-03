@@ -640,36 +640,38 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    dataset_types = ["mt-bench", "HEx-PHI",  # "toxic-chat",
-                     "openai", #"hotpot_qa",
-                     "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
-                     "gibberish", "gpt-jailbreak", # "jailbreak"
-                     ]
-
-    data_num_dict = {
-        "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-        # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
-        "openai": {"train": 160, "validation": 1500, "test": 0},
-        # "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
-        "truthful_qa": {"train": 500, "validation": 100, "test": 100},
-        "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
-        "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
-        "gibberish": {"train": 1000, "validation": 150, "test": 100},
-        "mt-bench": {"train": 0, "validation": 80, "test": 0},
-        "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
-        "jailbreak": {"train": 400, "validation": 0, "test": 70},
-    }
-    dataloader = DataLoader()
-    dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
-
-    training_data_df = dataset["train"].to_pandas()
-    dataloader.detect_duplicates_in_pd_dataset(training_data_df)
-    validation_df = dataset["validation"].to_pandas()
-    dataloader.detect_duplicates_in_pd_dataset(validation_df)
-    test_df = dataset["test"].to_pandas()
-    dataloader.detect_duplicates_in_pd_dataset(test_df)
-
-    print(f"original dataset = {dataset}")
-
-    new_dataset = dataloader.merge_datasets_of_different_phases_and_remove_duplicates([dataset])
-    print(f"new dataset = {new_dataset}")
+    # dataset_types = ["mt-bench", "HEx-PHI",  # "toxic-chat",
+    #                  "openai", #"hotpot_qa",
+    #                  "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
+    #                  "gibberish", "gpt-jailbreak", # "jailbreak"
+    #                  ]
+    #
+    # data_num_dict = {
+    #     "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+    #     # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+    #     "openai": {"train": 160, "validation": 1500, "test": 0},
+    #     # "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
+    #     "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+    #     "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
+    #     "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
+    #     "gibberish": {"train": 1000, "validation": 150, "test": 100},
+    #     "mt-bench": {"train": 0, "validation": 80, "test": 0},
+    #     "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
+    #     "jailbreak": {"train": 400, "validation": 0, "test": 70},
+    # }
+    # dataloader = DataLoader()
+    # dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
+    #
+    # training_data_df = dataset["train"].to_pandas()
+    # dataloader.detect_duplicates_in_pd_dataset(training_data_df)
+    # validation_df = dataset["validation"].to_pandas()
+    # dataloader.detect_duplicates_in_pd_dataset(validation_df)
+    # test_df = dataset["test"].to_pandas()
+    # dataloader.detect_duplicates_in_pd_dataset(test_df)
+    #
+    # print(f"original dataset = {dataset}")
+    #
+    # new_dataset = dataloader.merge_datasets_of_different_phases_and_remove_duplicates([dataset])
+    # print(f"new dataset = {new_dataset}")
+    d = load_dataset("rubend18/ChatGPT-Jailbreak-Prompts")
+    print(d)
