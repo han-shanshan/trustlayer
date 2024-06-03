@@ -1,3 +1,4 @@
+from data_operation.data_loader import DataLoader
 import numpy as np
 from datasets import load_metric
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, EarlyStoppingCallback, TrainerCallback, \
@@ -21,6 +22,8 @@ precision_metric = load_metric("precision")
 recall_metric = load_metric("recall")
 f1_metric = load_metric("f1")
 roc_auc_metric = evaluate.load("roc_auc")
+
+
 # roc_auc_metric = load_metric("roc_auc")
 
 
@@ -137,25 +140,31 @@ class TrainingEngine:
         elif self.task_name in [HALLUCINATION_REASONING_TASK_NAME]:  # add explanations for inference results
             pass
 
-    def train(self, desired_total_data_n=None):
+    def train(self, desired_total_data_n=None, run_id=None):
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
                                                                                 data_num_dict=self.data_num_dict,
                                                                                 desired_total_data_n=desired_total_data_n)
+        print(f"dataset in training: {dataset}")
         print(f"sample data = {dataset['train'][0]}")
+        if run_id is None:
+            output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name
+        else:
+            output_dir = run_id + "-" + self.base_model_name.split("/")[-1] + "-" + self.task_name
+
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
         tokenizer = get_tokenizer(model, base_model_name=self.base_model_name)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
+        print(f"encoded_dataset in training: {encoded_dataset}")
         config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
         model = get_peft_model(model, config_manager.get_lora_config())
         model.print_trainable_parameters()  # see % trainable parameters
-        output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name
 
         peft_trainer = Trainer(
             model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
+            args=config_manager.get_training_config(output_dir=output_dir, batch_size=32),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,
@@ -164,5 +173,19 @@ class TrainingEngine:
 
         peft_trainer.train()
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
-        print("Test Results:", test_results)
+        print("Test Results with hybrid test data:", test_results)
         model.save_pretrained(output_dir + "-final")
+
+        from datasets import DatasetDict
+        dataset = DataLoader().process_a_subdataset_for_all_in_one_task(dataset_type="toxic-chat")
+        dataset = DatasetDict({
+            'train': dataset
+        })
+
+        encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
+        test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["train"])
+        print("Test Results with toxic-chat data:", test_results)
+
+
+
+

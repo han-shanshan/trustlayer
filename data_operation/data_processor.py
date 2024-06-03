@@ -114,7 +114,6 @@ class DataProcessor:
     def process_encoded_datasets(self, dataset, tokenizer):
         self.tokenizer = tokenizer
         encoded_dataset = self.encoding(dataset)
-        print(f"encoding dataset = {encoded_dataset}")
         if self.task_name == TOPIC_TASK_NAME:  # todo: move to data loader
             encoded_dataset = self.concatenate_dataset_of_same_phase(encoded_dataset)
         final_dataset = DatasetDict(encoded_dataset)

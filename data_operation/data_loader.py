@@ -194,9 +194,10 @@ class DataLoader:
         elif dataset_type == "awesome_chatgpt_prompts":
             sub_dataset = load_dataset("fka/awesome-chatgpt-prompts")["train"]
             sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
-        elif dataset_type == "jigsaw":
-            sub_dataset = self.load_toxic_sophisticated_data(desired_number=50000)
-            sub_dataset = sub_dataset.filter(lambda example: example["label"] == 1)
+        elif dataset_type in ["jigsaw", "jigsaw-toxic-only"]:
+            sub_dataset = self.load_toxic_sophisticated_data(desired_number=210000)
+            if dataset_type == "jigsaw-toxic-only":
+                sub_dataset = sub_dataset.filter(lambda example: example["label"] == 1)
         elif dataset_type == "gibberish":
             sub_dataset = self.filter_non_records(load_dataset("Sowmya15/March06_gibberish"), "text")["train"]
             sub_dataset = sub_dataset.map(lambda example: {"label": 1 if example["label"] != 0 else 0})

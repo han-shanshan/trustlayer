@@ -41,20 +41,19 @@ class InferenceEngine:
             self.model_name = "Fox"
         else:
             self.model_name = base_model.split("/")[1]
-        print(f"base_model = {base_model}")
         if adapter_path is not None:
             self.model = AutoModelForSequenceClassification.from_pretrained(adapter_path,
-                                                                                 problem_type=self.problem_type,
-                                                                                 num_labels=len(
-                                                                                     self.config[self.task_name]),
-                                                                                 id2label=self.config[self.task_name]
-                                                                                 )
+                                                                            problem_type=self.problem_type,
+                                                                            num_labels=len(
+                                                                                self.config[self.task_name]),
+                                                                            id2label=self.config[self.task_name]
+                                                                            )
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(base_model,
-                                                                                 problem_type=self.problem_type,
-                                                                                 num_labels=len(self.config[self.task_name]),
-                                                                                 id2label=self.config[self.task_name]
-                                                                                 )
+                                                                            problem_type=self.problem_type,
+                                                                            num_labels=len(self.config[self.task_name]),
+                                                                            id2label=self.config[self.task_name]
+                                                                            )
         self.tokenizer = get_tokenizer(self.model, base_model_name=base_model)
         self.model.to(self.device)
 
@@ -81,6 +80,7 @@ class InferenceEngine:
     """
     https://huggingface.co/docs/peft/en/quicktour
     """
+
     def inference(self, text):
         if isinstance(text, list):
             encoding = self.tokenizer(text[0], text_pair=text[1], padding=True, truncation=True, return_tensors="pt")
@@ -101,28 +101,59 @@ class InferenceEngine:
             predicted_label = [self.config[self.task_name][str(idx)] for idx, label in enumerate(predictions) if
                                label == 1.0]
         else:
-            predicted_label_idx = np.argmax(logits, axis=1).item()
-            print(f"logits = {logits}, label = {predicted_label_idx}")
+            predicted_label_idx = np.argmax(logits.cpu(), axis=1).item()
+            # print(f"logits = {logits}, label = {predicted_label_idx}")
             predicted_label = self.config[self.task_name][str(predicted_label_idx)]
 
         return predicted_label
 
-    def evaluate(self, dataset, phase="train"):
-        data_processor = DataProcessor(task_name=self.task_name)
-        encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=self.tokenizer)
-        labels = dataset[phase]["label"]
-        encoded_dataset = encoded_dataset[phase]
+    def evaluate(self, dataset):
+        labels = dataset["label"]
+        texts = dataset["text"]
+        dataset = dataset.remove_columns('label')
         predictions = []
         probabilities = []
-
-        for i in range(len(encoded_dataset)):
-            encoding = {k: v.to(self.model.device) for k, v in encoded_dataset[i].items()}
+        counter = 0
+        for text in texts:
+            encoding = self.tokenizer(text, padding="max_length", truncation=True, max_length=516,
+                                      return_tensors="pt")
+            encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
+            # print(f"encoding =========================== {encoding}")
             outputs = self.model(**encoding)
             logits = outputs.logits
             predicted_label_idx = torch.argmax(logits, dim=-1).item()
-            probability = sigmoid(logits[:, 1].cpu()).item()
+            probability = sigmoid(logits[:, 1].cpu().detach()).item()
             predictions.append(predicted_label_idx)
+            # print(f"predicted_label_idx = {predicted_label_idx}")
             probabilities.append(probability)
+
+            if counter % 100 == 0:
+                print(f"label = {predicted_label_idx}, real label = {labels[counter]}, text = {text}")
+            counter += 1
 
         metrics = compute_metrics(labels, predictions, probabilities)
         print(f"metrics = {metrics}")
+
+    # def evaluate(self, dataset, phase="train"):
+    #     labels = dataset[phase]["label"]
+    #     dataset = dataset.remove_columns('label')
+    #     data_processor = DataProcessor(task_name=self.task_name)
+    #     encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=self.tokenizer)
+    #     print(f"encoded_dataset in inference engine = {encoded_dataset}")
+    #     encoded_dataset = encoded_dataset[phase]
+    #     predictions = []
+    #     probabilities = []
+
+    #     for i in range(len(encoded_dataset)):
+    #         print(f"encoded_dataset in inference engine = {encoded_dataset}")
+    #         encoding = {k: v.to(self.model.device) for k, v in encoded_dataset[i].items()}
+    #         print(f"encoding =========================== {encoding}")
+    #         outputs = self.model(**encoding)
+    #         logits = outputs.logits
+    #         predicted_label_idx = torch.argmax(logits, dim=-1).item()
+    #         probability = sigmoid(logits[:, 1].cpu()).item()
+    #         predictions.append(predicted_label_idx)
+    #         probabilities.append(probability)
+
+    #     metrics = compute_metrics(labels, predictions, probabilities)
+    #     print(f"metrics = {metrics}")
