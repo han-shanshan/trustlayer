@@ -15,6 +15,7 @@ from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
 from scipy.special import expit as sigmoid
+from datetime import datetime
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -140,19 +141,18 @@ class TrainingEngine:
         elif self.task_name in [HALLUCINATION_REASONING_TASK_NAME]:  # add explanations for inference results
             pass
 
-    def train(self, desired_total_data_n=None, run_id=None):
+    def train(self, desired_total_data_n=None):
+        t = str(datetime.now())
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
                                                                                 data_num_dict=self.data_num_dict,
                                                                                 desired_total_data_n=desired_total_data_n)
+        write_hf_dataset_to_csv(dataset['train'], f"{self.task_name}_train_data_{t}.csv")
+        write_hf_dataset_to_csv(dataset['validation'], f"{self.task_name}_validation_data_{t}.csv")
         print(f"dataset in training: {dataset}")
         print(f"sample data = {dataset['train'][0]}")
-        if run_id is None:
-            output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name
-        else:
-            output_dir = run_id + "-" + self.base_model_name.split("/")[-1] + "-" + self.task_name
-
-        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data.csv")
+        output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + t
+        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{t}.csv")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
         print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
         tokenizer = get_tokenizer(model, base_model_name=self.base_model_name)

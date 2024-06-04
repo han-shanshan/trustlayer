@@ -51,11 +51,11 @@ def azure_test(dataset):
             prediction = 1
         predictions.append(prediction)
         probabilities.append(0)  # fake
-        # print(f"{unsafe_severity}, {text} \n =========================\n")
+        print(f"{counter}---{unsafe_severity}, {text} \n =========================\n")
         counter += 1
-        if counter % 100 == 0:
+        if counter % 10 == 0:
             print(f"{counter} done; current task prediction: {prediction}, {text}")
-            time.sleep(10)
+            # time.sleep(10)
 
     metrics = compute_metrics(labels, predictions, probabilities)
     metrics.pop('roc_auc')  # probabilities are fake; just to make the parameters suitable for compute_metrics
