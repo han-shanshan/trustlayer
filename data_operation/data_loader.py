@@ -66,6 +66,10 @@ class DataLoader:
     1. Hotpot QA: https://huggingface.co/datasets/hotpot_qa
     2. TruthfulQA: https://huggingface.co/datasets/truthful_qa?row=3
     3. awesome chatgpt prompts: https://huggingface.co/datasets/fka/awesome-chatgpt-prompts
+    4. personalized prompts: https://huggingface.co/datasets/andrewsiah/filtered_personalization_prompt_response
+    5. qa chat prompts: https://huggingface.co/datasets/nm-testing/qa-chat-prompts?row=0
+    6. 10k_prompts_ranked: https://huggingface.co/datasets/DIBT/10k_prompts_ranked?row=34
+    7. iterative-prompt: https://huggingface.co/datasets/RLHFlow/iterative-prompt-v1-iter1-20K?row=0
 
     Hybrid data: 
     1. toxic-chat: https://huggingface.co/datasets/lmsys/toxic-chat
@@ -141,16 +145,6 @@ class DataLoader:
         #     print(data)
         #     print(f"sample data = {data[0]}")
 
-    def process_a_subdataset_for_all_in_one_task(self, dataset_type):
-        task_data = self.get_a_dataset_for_all_in_one_task(dataset_type)
-        task_data = self.drop_duplicates_in_a_dataset(task_data, col_name="text")
-        if dataset_type in ["openai", "hotpot_qa", "truthful_qa", "mt-bench", "jigsaw",
-                            "awesome_chatgpt_prompts", "jailbreak", "gpt-jailbreak", "toxic-chat"]:
-            task_data = task_data.remove_columns([col for col in task_data.column_names if col not in ["text", "label"]])
-        print(f"{dataset_type}: {task_data}")
-        print(f"sample data = {task_data[0]}\n=====================\n")
-        task_data = task_data.filter(lambda example: example['label'] is not None and example["text"] is not None)
-        return task_data
 
     @staticmethod
     def remove_duplicates_between_datasets(dataset_list):
@@ -166,7 +160,7 @@ class DataLoader:
             dataset_list[i] = D.filter(lambda e: e['text'].strip() not in temp_duplicate_set)
         return dataset_list
 
-    def get_a_dataset_for_all_in_one_task(self, dataset_type):
+    def process_a_subdataset_for_all_in_one_task(self, dataset_type):
         sub_dataset = None
         if dataset_type == "HEx-PHI":
             sub_dataset = self.load_HEx_PHI_data()
@@ -211,6 +205,30 @@ class DataLoader:
             sub_dataset = load_dataset("rubend18/ChatGPT-Jailbreak-Prompts")["train"]
             sub_dataset = sub_dataset.map(
                 lambda example: {"text": example["Prompt"], "label": 1})
+        elif dataset_type == "personalization_prompt":
+            sub_dataset = load_dataset("andrewsiah/filtered_personalization_prompt_response")["train"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
+        elif dataset_type == "qa-chat-prompts":
+            sub_dataset = load_dataset("nm-testing/qa-chat-prompts")["train_sft"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
+        elif dataset_type == "chatgpt-prompts":
+            sub_dataset = load_dataset("MohamedRashad/ChatGPT-prompts")["train"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["human_prompt"], "label": 0})
+        elif dataset_type == "10k_prompts_ranked":
+            sub_dataset = load_dataset("DIBT/10k_prompts_ranked")["train"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
+        elif dataset_type == "iterative-prompt":
+            sub_dataset = load_dataset("RLHFlow/iterative-prompt-v1-iter1-20K")["train"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["context"].replace("Here is a request of a "
+                                                                                              "user for an AI "
+                                                                                              "assistant. User:",
+                                                                                              '').strip(), "label": 0})
+
+        sub_dataset = self.drop_duplicates_in_a_dataset(sub_dataset, col_name="text")
+        sub_dataset = sub_dataset.remove_columns([col for col in sub_dataset.column_names if col not in ["text", "label"]])
+        print(f"{dataset_type}: {sub_dataset}")
+        print(f"sample data = {sub_dataset[0]}\n=====================\n")
+        sub_dataset = sub_dataset.filter(lambda example: example['label'] is not None and example["text"] is not None)
         return sub_dataset
 
     @staticmethod
@@ -641,27 +659,39 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    # dataset_types = ["mt-bench", "HEx-PHI",  # "toxic-chat",
-    #                  "openai", #"hotpot_qa",
-    #                  "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
-    #                  "gibberish", "gpt-jailbreak", # "jailbreak"
-    #                  ]
-    #
-    # data_num_dict = {
-    #     "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-    #     # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
-    #     "openai": {"train": 160, "validation": 1500, "test": 0},
-    #     # "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
-    #     "truthful_qa": {"train": 500, "validation": 100, "test": 100},
-    #     "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
-    #     "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
-    #     "gibberish": {"train": 1000, "validation": 150, "test": 100},
-    #     "mt-bench": {"train": 0, "validation": 80, "test": 0},
-    #     "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
-    #     "jailbreak": {"train": 400, "validation": 0, "test": 70},
-    # }
-    # dataloader = DataLoader()
-    # dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
+    dataset_types = [
+        # "mt-bench", "HEx-PHI",  # "toxic-chat",
+        #              "openai", "hotpot_qa",
+        #              "truthful_qa",
+        #              "awesome_chatgpt_prompts", "jigsaw",
+        #              #  "gibberish",
+        #              "gpt-jailbreak", "jailbreak",
+                     "personalization_prompt", "qa-chat-prompts",
+                     "chatgpt-prompts", "10k_prompts_ranked",
+                     "iterative-prompt"
+                     ]
+
+    data_num_dict = {
+        "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+        # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+        "openai": {"train": 160, "validation": 1500, "test": 0},
+        "hotpot_qa": {"train": 500, "validation": 200, "test": 200},
+        "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+        "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
+        "jigsaw": {"train": 50000, "validation": 2000, "test": 300},
+        # "gibberish": {"train": 1000, "validation": 150, "test": 100},
+        "mt-bench": {"train": 0, "validation": 80, "test": 0},
+        "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
+        "jailbreak": {"train": 400, "validation": 0, "test": 70},
+        "personalization_prompt": {"train": 1000, "validation": 800, "test": 200},
+        "qa-chat-prompts": {"train": 0, "validation": 200, "test": 0},
+        "chatgpt-prompts": {"train": 360, "validation": 0, "test": 0},
+        "10k_prompts_ranked": {"train": 5000, "validation": 2000, "test": 500},
+        "iterative-prompt": {"train": 5000, "validation": 2000, "test": 500},
+    }
+    dataloader = DataLoader()
+    dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
+    print(dataset)
     #
     # training_data_df = dataset["train"].to_pandas()
     # dataloader.detect_duplicates_in_pd_dataset(training_data_df)
