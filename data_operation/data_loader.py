@@ -4,7 +4,8 @@ import pandas as pd
 from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 from data_operation.data_reader import DataReader
 from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
+    HALLUCINATION_EXPLANATION_TASK_NAME
 from utils.file_operations import write_a_dictionary_to_file
 
 
@@ -32,6 +33,9 @@ class DataLoader:
             task_data = self.load_unsafe_prompt_data()
         elif task_name == HALLUCINATION_TASK_NAME:
             task_data = self.load_hallucination_data()
+        elif task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+            task_data = self.get_hybrid_hallucination_data(dataset_types, data_num_dict=data_num_dict)
+            return task_data
         elif task_name == TOXICITY_TASK_NAME:
             if dataset_types is None:
                 task_data = self.load_toxicity_data()  # default
@@ -54,6 +58,59 @@ class DataLoader:
                                                  validation_per)
         print(f"new dataset: {DatasetDict(small_dataset)}")
         return small_dataset
+
+    def get_hybrid_hallucination_data(self, dataset_types: list = None, data_num_dict=None):
+        if data_num_dict is None:
+            raise ValueError(f"data num dict is None!")
+        print(f"dataset_types = {dataset_types}")
+        dataset_list = []
+
+        for i in range(len(dataset_types)):
+            dataset_type = dataset_types[i]
+            dataset = self.process_a_subdataset_for_hybrid_hallucination_data(dataset_type)
+            dataset_list.append(dataset.shuffle(seed=0))
+
+        # dataset_list = self.remove_duplicates_between_datasets(dataset_list) # todo: when there are more datasets
+
+        test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
+            data_num_dict, dataset_types, dataset_list)
+
+        datasets = DatasetDict({
+            'train': training_dataset,
+            'validation': validation_dataset,
+            'test': test_dataset
+        })
+        datasets = datasets.shuffle(seed=0)
+        print(f"final datasets = {datasets}")
+        return datasets
+
+
+    @staticmethod
+    def get_llama_prompt_for_hallucination_reasoning_task(input):
+        return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> Is there hallucination in the Answer based on the Question and the Context?  {input}. [/INST] "
+
+    def process_a_subdataset_for_hybrid_hallucination_data(self, dataset_type):
+        sub_dataset = None
+        # if dataset_type == "rag-hallucination1000":
+        #     sub_dataset = load_dataset("neural-bridge/rag-hallucination-dataset-1000")
+        #     sub_dataset = self._merge_several_datasets_of_different_phases([sub_dataset])
+        #     sub_dataset = sub_dataset.map(lambda example: {"Input": f"Question: {example['question']}; Context: {example['context']}; Answer: {example['answer']}", "Output": "No, the context does not contain necessary information to answer the question. "})
+        #     print(sub_dataset)
+        #     sub_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates([sub_dataset], col_name1="Input", col_name2="Output")
+        if dataset_type == "HaluEval":
+            sub_dataset = load_dataset("pminervini/HaluEval", "qa")["data"]
+            sub_dataset.filter(lambda example: example['question'] is not None and example["knowledge"] is not None and example["right_answer"] is not None and example["hallucinated_answer"] is not None)
+            sub_dataset1 = sub_dataset.map(lambda example: {"input": f"Question: {example['question']}; Context: {example['knowledge']}; Answer: {example['right_answer']}", "output": f"No, the answer can be deduced from the context. "})
+            sub_dataset2 = sub_dataset.map(lambda example: {
+                "input": f"Question: {example['question']}; Context: {example['knowledge']}; Answer: {example['hallucinated_answer']}",
+                "output": f"Yes, the answer cannot be deduced from the context or the answer is useless. "})
+            sub_dataset = concatenate_datasets([sub_dataset1, sub_dataset2])
+
+        sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
+        sub_dataset = sub_dataset.map(lambda example: {"input": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"]), "output": example["output"]})
+        sub_dataset = sub_dataset.remove_columns(
+            [col for col in sub_dataset.column_names if col not in ["input", "output"]])
+        return sub_dataset
 
     """
     (train #, evaluation #, testing #)
@@ -81,12 +138,7 @@ class DataLoader:
     def all_in_one_data(self, dataset_types: list = None, data_num_dict=None):
         if data_num_dict is None:
             raise ValueError(f"data num dict is None!")
-
-        training_dataset = None
-        validation_dataset = None
-        test_dataset = None
         print(f"dataset_types = {dataset_types}")
-        dataset_label_counter_meta = {}
         dataset_list = []
 
         for i in range(len(dataset_types)):
@@ -96,40 +148,8 @@ class DataLoader:
 
         dataset_list = self.remove_duplicates_between_datasets(dataset_list)
 
-        for i in range(len(dataset_types)):
-            dataset_type = dataset_types[i]
-            training_data_num = data_num_dict[dataset_type]["train"]
-            validation_data_num = data_num_dict[dataset_type]["validation"]
-            test_data_num = data_num_dict[dataset_type]["test"]
-
-            meta = {}
-            if training_data_num > 0:
-                sub_data = dataset_list[i].select(range(training_data_num))
-                if training_dataset is None:
-                    training_dataset = sub_data
-                else:
-                    training_dataset = concatenate_datasets([training_dataset, sub_data])
-                meta["training_label_1"], meta["training_label_0"], meta["training_total"] = self.count_label_numbers(
-                    sub_data)
-            if validation_data_num > 0:
-                sub_data = dataset_list[i].select(range(training_data_num, training_data_num + validation_data_num))
-                if validation_dataset is None:
-                    validation_dataset = sub_data
-                else:
-                    validation_dataset = concatenate_datasets([validation_dataset, sub_data])
-                meta["validation_label_1"], meta["validation_label_0"], meta[
-                    "validation_total"] = self.count_label_numbers(sub_data)
-            if test_data_num > 0:
-                sub_data = dataset_list[i].select(range(training_data_num + validation_data_num,
-                                                        training_data_num + validation_data_num + test_data_num))
-                if test_dataset is None:
-                    test_dataset = sub_data
-                else:
-                    test_dataset = concatenate_datasets([test_dataset, sub_data])
-                meta["test_label_1"], meta["test_label_0"], meta["test_total"] = self.count_label_numbers(sub_data)
-            dataset_label_counter_meta[dataset_type] = meta
-
-        write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt", dictionary=dataset_label_counter_meta)
+        test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
+            data_num_dict, dataset_types, dataset_list)
 
         datasets = DatasetDict({
             'train': training_dataset,
@@ -145,6 +165,48 @@ class DataLoader:
         #     print(data)
         #     print(f"sample data = {data[0]}")
 
+    def create_a_hybrid_dataset_based_on_data_num_dict(self, data_num_dict, dataset_types, dataset_list):
+        dataset_label_counter_meta = {}
+        training_dataset = None
+        validation_dataset = None
+        test_dataset = None
+        for i in range(len(dataset_types)):
+            dataset_type = dataset_types[i]
+            training_data_num = data_num_dict[dataset_type]["train"]
+            validation_data_num = data_num_dict[dataset_type]["validation"]
+            test_data_num = data_num_dict[dataset_type]["test"]
+
+            meta = {}
+            if training_data_num > 0:
+                sub_data = dataset_list[i].select(range(training_data_num))
+                if training_dataset is None:
+                    training_dataset = sub_data
+                else:
+                    training_dataset = concatenate_datasets([training_dataset, sub_data])
+                if "label" in sub_data.column_names:
+                    meta["training_label_1"], meta["training_label_0"], meta["training_total"] = self.count_label_numbers(
+                        sub_data)
+            if validation_data_num > 0:
+                sub_data = dataset_list[i].select(range(training_data_num, training_data_num + validation_data_num))
+                if validation_dataset is None:
+                    validation_dataset = sub_data
+                else:
+                    validation_dataset = concatenate_datasets([validation_dataset, sub_data])
+                if "label" in sub_data.column_names:
+                    meta["validation_label_1"], meta["validation_label_0"], meta["validation_total"] = self.count_label_numbers(sub_data)
+            if test_data_num > 0:
+                sub_data = dataset_list[i].select(range(training_data_num + validation_data_num,
+                                                        training_data_num + validation_data_num + test_data_num))
+                if test_dataset is None:
+                    test_dataset = sub_data
+                else:
+                    test_dataset = concatenate_datasets([test_dataset, sub_data])
+                if "label" in sub_data.column_names:
+                    meta["test_label_1"], meta["test_label_0"], meta["test_total"] = self.count_label_numbers(sub_data)
+            dataset_label_counter_meta[dataset_type] = meta
+        write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt",
+                                   dictionary=dataset_label_counter_meta)
+        return test_dataset, training_dataset, validation_dataset
 
     @staticmethod
     def remove_duplicates_between_datasets(dataset_list):
@@ -189,7 +251,7 @@ class DataLoader:
             sub_dataset = load_dataset("fka/awesome-chatgpt-prompts")["train"]
             sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
         elif dataset_type in ["jigsaw", "jigsaw-toxic-only"]:
-            sub_dataset = self.load_toxic_sophisticated_data(desired_number=210000)
+            sub_dataset = self.load_toxic_sophisticated_data(desired_number=80000)
             if dataset_type == "jigsaw-toxic-only":
                 sub_dataset = sub_dataset.filter(lambda example: example["label"] == 1)
         elif dataset_type == "gibberish":
@@ -225,7 +287,8 @@ class DataLoader:
                                                                                               '').strip(), "label": 0})
 
         sub_dataset = self.drop_duplicates_in_a_dataset(sub_dataset, col_name="text")
-        sub_dataset = sub_dataset.remove_columns([col for col in sub_dataset.column_names if col not in ["text", "label"]])
+        sub_dataset = sub_dataset.remove_columns(
+            [col for col in sub_dataset.column_names if col not in ["text", "label"]])
         print(f"{dataset_type}: {sub_dataset}")
         print(f"sample data = {sub_dataset[0]}\n=====================\n")
         sub_dataset = sub_dataset.filter(lambda example: example['label'] is not None and example["text"] is not None)
@@ -372,27 +435,32 @@ class DataLoader:
         avg_records_df = pd.DataFrame(merged_records)
         return pd.concat([non_duplicate_keys_df, avg_records_df], ignore_index=True)
 
-    def merge_datasets_of_different_phases_and_remove_duplicates(self, dataset_list: list):
+    def merge_datasets_of_different_phases_and_remove_duplicates(self, dataset_list: list,
+                                                                 col_name1="text", col_name2="label"):
         merged_dataset = self._merge_several_datasets_of_different_phases(dataset_list)
-        dataset_dicts = merged_dataset.to_dict()
+        merged_datasets_without_duplicates = self.remove_duplicates_in_a_dataset(merged_dataset, col_name2, col_name1)
+        return merged_datasets_without_duplicates
+
+    @staticmethod
+    def remove_duplicates_in_a_dataset(dataset, col_name2, col_name1):
+        dataset_dicts = dataset.to_dict()
         unique_texts = {}
-        for i, (text, label) in enumerate(zip(dataset_dicts["text"], dataset_dicts["label"])):
-            if text is not None:
-                text = text.strip()
-                if text in unique_texts:
-                    if unique_texts[text] is not None and unique_texts[text] != label:
-                        unique_texts[text] = None  # mark conflicts
+        for i, (col1_value, col2_value) in enumerate(zip(dataset_dicts[col_name1], dataset_dicts[col_name2])):
+            if col1_value is not None:
+                col1_value = col1_value.strip()
+                if col1_value in unique_texts:
+                    if unique_texts[col1_value] is not None and unique_texts[col1_value] != col2_value:
+                        unique_texts[col1_value] = None  # mark conflicts
                         print(f"conflict founded ---------")
                 else:
-                    unique_texts[text] = label
-
+                    unique_texts[col1_value] = col2_value
         transformed_data = {
-            "text": list(unique_texts.keys()),
-            "label": list(unique_texts.values())
+            col_name1: list(unique_texts.keys()),
+            col_name2: list(unique_texts.values())
         }
         merged_datasets_without_duplicates = Dataset.from_dict(transformed_data)
         merged_datasets_without_duplicates = merged_datasets_without_duplicates.filter(
-            lambda example: example['label'] is not None)
+            lambda example: example[col_name2] is not None)
         return merged_datasets_without_duplicates
 
     @staticmethod
@@ -659,39 +727,51 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    dataset_types = [
-        # "mt-bench", "HEx-PHI",  # "toxic-chat",
-        #              "openai", "hotpot_qa",
-        #              "truthful_qa",
-        #              "awesome_chatgpt_prompts", "jigsaw",
-        #              #  "gibberish",
-        #              "gpt-jailbreak", "jailbreak",
-                     "personalization_prompt", "qa-chat-prompts",
-                     "chatgpt-prompts", "10k_prompts_ranked",
-                     "iterative-prompt"
-                     ]
-
+    data_types = [
+        # "rag-hallucination1000", # 1000 in total
+        "HaluEval"
+                  ]
     data_num_dict = {
-        "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-        # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
-        "openai": {"train": 160, "validation": 1500, "test": 0},
-        "hotpot_qa": {"train": 500, "validation": 200, "test": 200},
-        "truthful_qa": {"train": 500, "validation": 100, "test": 100},
-        "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
-        "jigsaw": {"train": 50000, "validation": 2000, "test": 300},
-        # "gibberish": {"train": 1000, "validation": 150, "test": 100},
-        "mt-bench": {"train": 0, "validation": 80, "test": 0},
-        "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
-        "jailbreak": {"train": 400, "validation": 0, "test": 70},
-        "personalization_prompt": {"train": 1000, "validation": 800, "test": 200},
-        "qa-chat-prompts": {"train": 0, "validation": 200, "test": 0},
-        "chatgpt-prompts": {"train": 360, "validation": 0, "test": 0},
-        "10k_prompts_ranked": {"train": 5000, "validation": 2000, "test": 500},
-        "iterative-prompt": {"train": 5000, "validation": 2000, "test": 500},
+        "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
+        # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
     }
-    dataloader = DataLoader()
-    dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
-    print(dataset)
+    data = DataLoader().get_hybrid_hallucination_data(dataset_types=data_types, data_num_dict=data_num_dict)
+
+
+
+    # dataset_types = [
+    #     # "mt-bench", "HEx-PHI",  # "toxic-chat",
+    #     #              "openai", "hotpot_qa",
+    #     #              "truthful_qa",
+    #     #              "awesome_chatgpt_prompts", "jigsaw",
+    #     #              #  "gibberish",
+    #     #              "gpt-jailbreak", "jailbreak",
+    #     "personalization_prompt", "qa-chat-prompts",
+    #     "chatgpt-prompts", "10k_prompts_ranked",
+    #     "iterative-prompt"
+    # ]
+    #
+    # data_num_dict = {
+    #     "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+    #     # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+    #     "openai": {"train": 160, "validation": 1500, "test": 0},
+    #     "hotpot_qa": {"train": 500, "validation": 200, "test": 200},
+    #     "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+    #     "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
+    #     "jigsaw": {"train": 50000, "validation": 2000, "test": 300},
+    #     # "gibberish": {"train": 1000, "validation": 150, "test": 100},
+    #     "mt-bench": {"train": 0, "validation": 80, "test": 0},
+    #     "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
+    #     "jailbreak": {"train": 400, "validation": 0, "test": 70},
+    #     "personalization_prompt": {"train": 1000, "validation": 800, "test": 200},
+    #     "qa-chat-prompts": {"train": 0, "validation": 200, "test": 0},
+    #     "chatgpt-prompts": {"train": 360, "validation": 0, "test": 0},
+    #     "10k_prompts_ranked": {"train": 5000, "validation": 2000, "test": 500},
+    #     "iterative-prompt": {"train": 5000, "validation": 2000, "test": 500},
+    # }
+    # dataloader = DataLoader()
+    # dataset = dataloader.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
+    # print(dataset)
     #
     # training_data_df = dataset["train"].to_pandas()
     # dataloader.detect_duplicates_in_pd_dataset(training_data_df)
@@ -704,5 +784,5 @@ if __name__ == '__main__':
     #
     # new_dataset = dataloader.merge_datasets_of_different_phases_and_remove_duplicates([dataset])
     # print(f"new dataset = {new_dataset}")
-    d = load_dataset("rubend18/ChatGPT-Jailbreak-Prompts")
-    print(d)
+    # d = load_dataset("rubend18/ChatGPT-Jailbreak-Prompts")
+    # print(d)

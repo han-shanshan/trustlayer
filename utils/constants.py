@@ -4,10 +4,10 @@ TOPIC_TASK_NAME = "topic"
 GIBBERISH_TASK_NAME = "gibberish"
 UNSAFE_PROMPT_TASK_NAME = "unsafe_prompt"
 HALLUCINATION_TASK_NAME = "hallucination"
+HALLUCINATION_EXPLANATION_TASK_NAME = "hallucination_explanation"
 TOXICITY_TASK_NAME = "toxicity"
 ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME = "all_in_one_unsafe_contents"
 CUSTOMIZED_HALLUCINATION_TASK_NAME = "customized_hallucination"
-HALLUCINATION_REASONING_TASK_NAME = "hallucination_reasoning"
 
 ############ MODEL #############
 MODEL_NAME_BERT_BASE = "google-bert/bert-base-uncased"

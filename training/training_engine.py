@@ -10,7 +10,8 @@ from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
 from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
     TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
-    CUSTOMIZED_HALLUCINATION_TASK_NAME, HALLUCINATION_REASONING_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+    CUSTOMIZED_HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
+    HALLUCINATION_EXPLANATION_TASK_NAME
 from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
@@ -79,6 +80,7 @@ def get_tokenizer(model, base_model_name):
     return tokenizer
 
 
+
 class TrainingEngine:
     def __init__(self, base_model_name, task_name, config=None):
         self.base_model_name = base_model_name
@@ -138,8 +140,6 @@ class TrainingEngine:
                                                                       label2id=label2id,
                                                                       load_in_8bit=False
                                                                       )
-        elif self.task_name in [HALLUCINATION_REASONING_TASK_NAME]:  # add explanations for inference results
-            pass
 
     def train(self, desired_total_data_n=None):
         t = str(datetime.now())
@@ -185,7 +185,3 @@ class TrainingEngine:
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["train"])
         print("Test Results with toxic-chat data:", test_results)
-
-
-
-

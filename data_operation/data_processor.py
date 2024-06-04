@@ -1,7 +1,8 @@
 import numpy as np
 from datasets import concatenate_datasets, DatasetDict
 from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
+    HALLUCINATION_EXPLANATION_TASK_NAME
 from data_operation.data_loader import DataLoader
 
 
@@ -99,6 +100,8 @@ class DataProcessor:
         dataset = DataLoader().load_data(task_name=self.task_name, dataset_types=dataset_types,
                                          data_num_dict=data_num_dict, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
+        if self.task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+            return dataset, None, None, None
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")
         idx = 0
