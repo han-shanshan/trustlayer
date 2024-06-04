@@ -84,10 +84,14 @@ class DataLoader:
         print(f"final datasets = {datasets}")
         return datasets
 
-
     @staticmethod
-    def get_llama_prompt_for_hallucination_reasoning_task(input):
-        return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> Is there hallucination in the Answer based on the Question and the Context?  {input}. [/INST] "
+    def get_llama_prompt_for_hallucination_reasoning_task(input, output):
+        return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> Is there hallucination in the Answer based on the Question and the Context?  {input}. {output}[/INST] "
+
+
+    # @staticmethod
+    # def get_llama_prompt_for_hallucination_reasoning_task(input):
+    #     return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> Is there hallucination in the Answer based on the Question and the Context?  {input}. [/INST] "
 
     def process_a_subdataset_for_hybrid_hallucination_data(self, dataset_type):
         sub_dataset = None
@@ -106,10 +110,11 @@ class DataLoader:
                 "output": f"Yes, the answer cannot be deduced from the context or the answer is useless. "})
             sub_dataset = concatenate_datasets([sub_dataset1, sub_dataset2])
 
-        sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
-        sub_dataset = sub_dataset.map(lambda example: {"input": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"]), "output": example["output"]})
+        # sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
+        sub_dataset = sub_dataset.map(lambda example: {"input": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
         sub_dataset = sub_dataset.remove_columns(
-            [col for col in sub_dataset.column_names if col not in ["input", "output"]])
+            [col for col in sub_dataset.column_names if col not in ["input"
+                                                                    ]])
         return sub_dataset
 
     """
@@ -285,7 +290,10 @@ class DataLoader:
                                                                                               "user for an AI "
                                                                                               "assistant. User:",
                                                                                               '').strip(), "label": 0})
-
+        elif dataset_type == "instruction-following":
+            sub_dataset = load_dataset("wis-k/instruction-following-eval")["train"]
+            sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
+        print(f"dataset name = {dataset_type}, {sub_dataset}")
         sub_dataset = self.drop_duplicates_in_a_dataset(sub_dataset, col_name="text")
         sub_dataset = sub_dataset.remove_columns(
             [col for col in sub_dataset.column_names if col not in ["text", "label"]])
@@ -726,16 +734,21 @@ class DataLoader:
         return dataset_phase.filter(lambda example: example[col_name] is not None)
 
 
-if __name__ == '__main__':
-    data_types = [
-        # "rag-hallucination1000", # 1000 in total
-        "HaluEval"
-                  ]
-    data_num_dict = {
-        "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
-        # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
-    }
-    data = DataLoader().get_hybrid_hallucination_data(dataset_types=data_types, data_num_dict=data_num_dict)
+# if __name__ == '__main__':
+    # sub_dataset = load_dataset("jackhhao/jailbreak-classification")["train"]
+    # sub_dataset = sub_dataset.map(
+    #     lambda example: {"text": example["prompt"], "label": 1 if example["type"] == "jailbreak" else 0})
+    # sub_dataset = sub_dataset.filter(lambda example: example["label"] == 1)
+    # print(sub_dataset)
+    # data_types = [
+    #     # "rag-hallucination1000", # 1000 in total
+    #     "HaluEval"
+    #               ]
+    # data_num_dict = {
+    #     "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
+    #     # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
+    # }
+    # data = DataLoader().get_hybrid_hallucination_data(dataset_types=data_types, data_num_dict=data_num_dict)
 
 
 
@@ -746,9 +759,9 @@ if __name__ == '__main__':
     #     #              "awesome_chatgpt_prompts", "jigsaw",
     #     #              #  "gibberish",
     #     #              "gpt-jailbreak", "jailbreak",
-    #     "personalization_prompt", "qa-chat-prompts",
-    #     "chatgpt-prompts", "10k_prompts_ranked",
-    #     "iterative-prompt"
+    #     # "personalization_prompt", "qa-chat-prompts",
+    #     # "chatgpt-prompts", "10k_prompts_ranked",
+    #     # "iterative-prompt"
     # ]
     #
     # data_num_dict = {

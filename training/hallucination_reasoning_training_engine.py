@@ -1,4 +1,6 @@
+from transformers.modeling_utils import unwrap_model
 from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+from transformers.trainer import _is_peft_model
 
 from data_operation.data_loader import DataLoader
 import numpy as np
@@ -11,16 +13,13 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
 from training.training_engine import TrainingEngine, CustomCallback
-from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
-    CUSTOMIZED_HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
-    HALLUCINATION_EXPLANATION_TASK_NAME
+from utils.constants import FOX_BASE_GPU
 from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
 from scipy.special import expit as sigmoid
 from datetime import datetime
-import nn
+import torch.nn as nn
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -30,6 +29,7 @@ f1_metric = load_metric("f1")
 roc_auc_metric = evaluate.load("roc_auc")
 
 tokenizer = AutoTokenizer.from_pretrained(FOX_BASE_GPU)
+tokenizer.pad_token = tokenizer.eos_token
 
 id1 = tokenizer.encode('Yes', add_special_tokens=False)[0]
 id2 = tokenizer.encode('yes', add_special_tokens=False)[0]
@@ -40,16 +40,27 @@ valid_token_ids = [id1, id2, id3, id4]
 
 
 class HallucinationReasoningTrainer(Trainer):
+
     def compute_loss(self, model, inputs, return_outputs=False):
         if self.label_smoother is not None and "labels" in inputs:
             labels = inputs.pop("labels")
         else:
             labels = None
         outputs = model(**inputs)
+        # Save past state if it exists
+        # TODO: this needs to be fixed and made cleaner later.
         if self.args.past_index >= 0:
             self._past = outputs[self.args.past_index]
         if labels is not None:
-            loss = self.label_smoother(outputs, labels, shift_labels=True)
+            unwrapped_model = unwrap_model(model)
+            if _is_peft_model(unwrapped_model):
+                model_name = unwrapped_model.base_model.model._get_name()
+            else:
+                model_name = unwrapped_model._get_name()
+            if model_name in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
+                loss = self.label_smoother(outputs, labels, shift_labels=True)
+            else:
+                loss = self.label_smoother(outputs, labels)
         else:
             if isinstance(outputs, dict) and "loss" not in outputs:
                 raise ValueError(
@@ -86,8 +97,8 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         t = str(datetime.now())
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, _, _, _ = data_processor.get_dataset(dataset_types=self.dataset_types,
-                                                                                data_num_dict=self.data_num_dict,
-                                                                                desired_total_data_n=desired_total_data_n)
+                                                      data_num_dict=self.data_num_dict,
+                                                      desired_total_data_n=desired_total_data_n)
         write_hf_dataset_to_csv(dataset['train'], f"{self.task_name}_train_data_{t}.csv")
         write_hf_dataset_to_csv(dataset['validation'], f"{self.task_name}_validation_data_{t}.csv")
         print(f"dataset in training: {dataset}")
@@ -95,22 +106,40 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + t
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{t}.csv")
         model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
-                                                    # device_map="auto",
-                                                    torch_dtype=torch.float32, trust_remote_code=True)
-        # encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
-        # print(f"encoded_dataset in training: {encoded_dataset}")
+                                                     # device_map="auto",
+                                                     torch_dtype=torch.float32,
+                                                     trust_remote_code=True)
+        model.config.pad_token_id = model.config.eos_token_id
+        print(f"dataset = {dataset}")
+
+        def tokenize_function(examples):
+            inputs = tokenizer(examples["input"], truncation=True, padding="max_length", max_length=512,
+                               return_tensors='pt')
+            # outputs = tokenizer(examples["output"], truncation=True, padding="max_length", max_length=512,
+            #                     return_tensors='pt')
+            # inputs["input_ids"] = torch.tensor(inputs["input_ids"]).long()  # Ensure input_ids are of type Long
+            # outputs["input_ids"] = torch.tensor(outputs["input_ids"]).long()  # Ensure labels are of type Long
+            # inputs["labels"] = outputs["input_ids"]
+            # print("Tokenized inputs:", inputs)  # Add this line to inspect tokenized inputs
+            return inputs
+
+        encoded_dataset = dataset.map(tokenize_function, batched=True, remove_columns=dataset["train"].column_names)
+
+        print(f"encoded: {encoded_dataset}")
+
         config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
         model = get_peft_model(model, config_manager.get_lora_config())
         model.print_trainable_parameters()  # see % trainable parameters
+        print(f"dataset = {dataset}")
 
         peft_trainer = HallucinationReasoningTrainer(
             model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=32),
-            train_dataset=dataset["train"],  # training dataset requires column input_ids
-            eval_dataset=dataset["validation"],
+            args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
+            train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
+            eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
-            data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
+            # data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
         )
 
         peft_trainer.train()
@@ -122,9 +151,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         real_results = []
 
         for j in range(len(dataset["test"])):
-            text = prompter.generate_prompt(
-                "Is there any fraud order in the following orders? Answer with 'yes' or 'no' only. Explain why",
-                dataset["test"][j]['input'])
+            text = DataLoader.get_llama_prompt_for_hallucination_reasoning_task(dataset["test"][j]['input'])
             inputs = tokenizer(text, return_tensors="pt", return_token_type_ids=False)  # .to(device)
 
             # outputs = model.generate(**inputs, top_k=1, max_new_tokens=1, pad_token_id=11)

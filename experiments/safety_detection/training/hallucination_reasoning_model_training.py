@@ -4,11 +4,11 @@ from training.training_engine import TrainingEngine
 import os
 import torch
 import json
-from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, FOX_BASE_GPU
+from utils.constants import HALLUCINATION_EXPLANATION_TASK_NAME, FOX_BASE_GPU
 import wandb
 from datasets import load_dataset
 
-TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+TASK_NAME = HALLUCINATION_EXPLANATION_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
 # lora_storage_path = MODEL_NAME.split("/")[1]
 # OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
@@ -23,7 +23,7 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 """
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3,4,5,6,7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # # Example usage
 # text = "He got his money... now he lies in wait till after the election in 2 yrs.... dirty politicians need to be afraid of Tar and feathers again... but they aren't and so the people get screwed."
@@ -32,19 +32,21 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '3,4,5,6,7'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    run_id = wandb.init(project=f"{TASK_NAME} with FOX-stage3")
+    # run_id = wandb.init(project=f"{TASK_NAME} with FOX-stage3")
+
     dataset_types = [
         # "rag-hallucination1000", # 1000 in total
         "HaluEval"
     ]
     data_num_dict = {
-        "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
+        # "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
+        "HaluEval": {"train": 800, "validation": 150, "test": 50},
         # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
     }
 
     trainer = HallucinationReasoningTrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                                            config={"metrics_average": "macro", "dataset_types": dataset_types,
-                                                    "data_num_dict": data_num_dict})
+                                                   config={"metrics_average": "macro", "dataset_types": dataset_types,
+                                                           "data_num_dict": data_num_dict})
     trainer.train()
     # trainer.train()
     # text = "i'm happy hahaha"
