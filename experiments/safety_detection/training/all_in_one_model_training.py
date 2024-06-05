@@ -1,12 +1,10 @@
-from utils.constants import FOX_BASE_GPU, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 from training.training_engine import TrainingEngine
-import os
+import torch
+from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, FOX_BASE_GPU
 import wandb
 
 TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
 MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
-lora_storage_path = MODEL_NAME.split("/")[1]
-OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections
@@ -18,8 +16,6 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 """
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
-
 # # Example usage
 # text = "He got his money... now he lies in wait till after the election in 2 yrs.... dirty politicians need to be afraid of Tar and feathers again... but they aren't and so the people get screwed."
 # scores = predict_scores(text)
@@ -27,29 +23,48 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    wandb.init(project=f"{TASK_NAME} with FOX")
-    dataset_types = ["HEx-PHI", "toxic-chat",
-                     "openai", "hotpot_qa", "truthful_qa", "awesome_chatgpt_prompts", "jigsaw",
-                     "gibberish", "mt-bench", "gpt-jailbreak", "jailbreak"
-                     ]
+    torch.cuda.empty_cache()
+    run_id = wandb.init(project=f"{TASK_NAME} with FOX-New")
+
+    dataset_types = [
+        "mt-bench", "HEx-PHI",  # "toxic-chat",
+        "openai", "hotpot_qa",
+        "truthful_qa",
+        "awesome_chatgpt_prompts", "jigsaw",
+        #  "gibberish",
+        "gpt-jailbreak",
+        "jailbreak",
+        "personalization_prompt", "qa-chat-prompts",
+        "chatgpt-prompts", "10k_prompts_ranked",
+        "iterative-prompt",
+        "instruction-following"
+    ]
 
     data_num_dict = {
-                "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
-                "toxic-chat": {"train": 0, "validation": 200, "test": 0},
-                "openai": {"train": 150, "validation": 1500, "test": 20},
-                "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
-                "truthful_qa": {"train": 500, "validation": 100, "test": 100},
-                "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 3},
-                "jigsaw": {"train": 6000, "validation": 1000, "test": 300},
-                "gibberish": {"train": 1000, "validation": 150, "test": 100},
-                "mt-bench": {"train": 0, "validation": 80, "test": 0},
-                "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
-                "jailbreak": {"train": 450, "validation": 0, "test": 50},
-            }
+        "HEx-PHI": {"train": 330, "validation": 0, "test": 0},
+        # "toxic-chat": {"train": 0, "validation": 200, "test": 0},
+        "openai": {"train": 1160, "validation": 500, "test": 0},
+        "hotpot_qa": {"train": 3000, "validation": 2500, "test": 500},
+        "truthful_qa": {"train": 500, "validation": 100, "test": 100},
+        "awesome_chatgpt_prompts": {"train": 0, "validation": 150, "test": 0},
+        "jigsaw": {"train": 50000, "validation": 2000, "test": 300},
+        # "gibberish": {"train": 1000, "validation": 150, "test": 100},
+        "mt-bench": {"train": 0, "validation": 80, "test": 0},
+        "gpt-jailbreak": {"train": 0, "validation": 78, "test": 0},
+        "jailbreak": {"train": 400, "validation": 0, "test": 70},
+        "personalization_prompt": {"train": 1000, "validation": 800, "test": 200},
+        "qa-chat-prompts": {"train": 0, "validation": 200, "test": 0},
+        "chatgpt-prompts": {"train": 350, "validation": 0, "test": 0},
+        "10k_prompts_ranked": {"train": 500, "validation": 500, "test": 200},
+        "iterative-prompt": {"train": 500, "validation": 500, "test": 200},
+        "instruction-following": {"train": 440, "validation": 100, "test": 0},
+    }
 
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                             config={"metrics_average": "macro", "dataset_types": dataset_types, "data_num_dict": data_num_dict})
+                             config={"metrics_average": "macro", "dataset_types": dataset_types,
+                                     "data_num_dict": data_num_dict})
     trainer.train()
+    # trainer.train()
     # text = "i'm happy hahaha"
     #
     # inference_engine = InferenceEngine(default_task=TASK_NAME)
