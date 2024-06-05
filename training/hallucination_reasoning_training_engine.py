@@ -59,10 +59,10 @@ class HallucinationReasoningTrainer(Trainer):
                          eval_dataset=eval_dataset, tokenizer=tokenizer, model_init=model_init,
                          compute_metrics=compute_metrics, callbacks=callbacks, optimizers=optimizers,
                          preprocess_logits_for_metrics=preprocess_logits_for_metrics)
-        self.yes_token_id = self.tokenizer.encode("yes", add_special_tokens=False)[0]
-        self.no_token_id = self.tokenizer.encode("no", add_special_tokens=False)[0]
-        self.Yes_token_id = self.tokenizer.encode("Yes", add_special_tokens=False)[0]
-        self.No_token_id = self.tokenizer.encode("No", add_special_tokens=False)[0]
+        self.yes_token_id = self.tokenizer("yes", add_special_tokens=False)[0]
+        self.no_token_id = self.tokenizer("no", add_special_tokens=False)[0]
+        self.Yes_token_id = self.tokenizer("Yes", add_special_tokens=False)[0]
+        self.No_token_id = self.tokenizer("No", add_special_tokens=False)[0]
 
     def compute_loss(self, model, inputs, return_outputs=False):
         if self.label_smoother is not None and "labels" in inputs:
@@ -120,8 +120,8 @@ class HallucinationReasoningTrainer(Trainer):
 
         # if labels is not None:
         #     response_template_ids = self.data_collator.response_token_ids
-        #     yes_token_id = self.tokenizer.encode("Yes", add_special_tokens=False)[0]
-        #     no_token_id = self.tokenizer.encode("No", add_special_tokens=False)[0]
+        #     yes_token_id = self.tokenizer("Yes", add_special_tokens=False)[0]
+        #     no_token_id = self.tokenizer("No", add_special_tokens=False)[0]
         #
         #     # Cross-entropy loss for the first token after response_template
         #     cross_entropy_loss_fn = torch.nn.CrossEntropyLoss()
