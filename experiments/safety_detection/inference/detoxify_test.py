@@ -19,7 +19,7 @@ def classify_records(dataset, pipe, threshold=0.5):
     counter = 0
     for text in dataset["text"]:
         result = pipe(text, padding=True, truncation=True)
-        print(f"result = {result}")
+        # print(f"result = {result}")
         score = 0
         for d in result[0]:
             if d['score'] > score:
@@ -63,5 +63,5 @@ if __name__ == '__main__':
     # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")
     dataset = prepare_toxic_chat_test_data()
     print(dataset)
-    detoxify_roberta_test(dataset)
+    detoxify_bert_test(dataset)
     print(f"Detoxify Experiments Done.")

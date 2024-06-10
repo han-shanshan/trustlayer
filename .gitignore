@@ -6,3 +6,6 @@
 .xlsx
 .bin
 .key
+.pyc
+.safetensors
+.key

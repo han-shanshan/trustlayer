@@ -26,10 +26,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    # wandb.init(project=f"{TASK_NAME} with FOX")
+    wandb.init(project=f"{TASK_NAME} with FOX")
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                             config={"metrics_average": "macro", "dataset_types": ["sophisticated"]})
-    trainer.train(desired_total_data_n=100)
+                             config={"metrics_average": "macro", "dataset_type": ["sophisticated"]})
+    trainer.train()
     # text = "i'm happy hahaha"
     #
     # inference_engine = InferenceEngine(default_task=TASK_NAME)

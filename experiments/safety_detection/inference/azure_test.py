@@ -52,6 +52,7 @@ def azure_test(dataset):
         predictions.append(prediction)
         probabilities.append(0)  # fake
         print(f"{counter}---{unsafe_severity}, {text} \n =========================\n")
+        print(f"{counter}---{unsafe_severity}, {text} \n =========================\n")
         counter += 1
         if counter % 10 == 0:
             print(f"{counter} done; current task prediction: {prediction}, {text}")

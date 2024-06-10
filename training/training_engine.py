@@ -34,14 +34,14 @@ def compute_metrics(labels, predictions, probabilities, metrics_average="macro")
     precision = precision_metric.compute(predictions=predictions, references=labels, average=metrics_average)
     recall = recall_metric.compute(predictions=predictions, references=labels, average=metrics_average)
     f1 = f1_metric.compute(predictions=predictions, references=labels, average=metrics_average)
-    roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
+    # roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
 
     return {
         "accuracy": accuracy["accuracy"],
         "precision": precision["precision"],
         "recall": recall["recall"],
         "f1": f1["f1"],
-        "roc_auc": roc_auc["roc_auc"]
+        # "roc_auc": roc_auc["roc_auc"]
     }
 
 
@@ -140,7 +140,7 @@ class TrainingEngine:
                                                                       load_in_8bit=False
                                                                       )
 
-    def train(self, desired_total_data_n=None):
+    def train(self, desired_total_data_n=None, batch_size=32):
         t = str(datetime.now())
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, id2labels, label2ids, label_names = data_processor.get_dataset(dataset_types=self.dataset_types,
@@ -160,10 +160,12 @@ class TrainingEngine:
         config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
         model = get_peft_model(model, config_manager.get_lora_config())
         model.print_trainable_parameters()  # see % trainable parameters
+        
+            
 
         peft_trainer = Trainer(
             model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=32),
+            args=config_manager.get_training_config(output_dir=output_dir, batch_size=batch_size),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,
@@ -175,12 +177,17 @@ class TrainingEngine:
         print("Test Results with hybrid test data:", test_results)
         model.save_pretrained(output_dir + "-final")
 
+
         from datasets import DatasetDict
         dataset = DataLoader().process_a_subdataset_for_all_in_one_task(dataset_type="toxic-chat")
         dataset = DatasetDict({
-            'train': dataset
+            'train': dataset 
         })
 
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["train"])
         print("Test Results with toxic-chat data:", test_results)
+
+
+
+

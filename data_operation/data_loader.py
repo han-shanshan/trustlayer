@@ -74,13 +74,20 @@ class DataLoader:
 
         test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
             data_num_dict, dataset_types, dataset_list)
-
+        
+        
+        training_dataset = training_dataset.map(lambda example: {
+        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
+        validation_dataset = validation_dataset.map(lambda example: {
+        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
+        test_dataset = test_dataset.map(lambda example: {
+        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], "")})
+        
         datasets = DatasetDict({
-            'train': training_dataset,
-            'validation': validation_dataset,
-            'test': test_dataset
+            'train': training_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text"]]),
+            'validation': validation_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text"]]),
+            'test': test_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text", "output"]])
         })
-        datasets = datasets.shuffle(seed=0)
         print(f"final datasets = {datasets}")
         return datasets
 
@@ -114,9 +121,7 @@ class DataLoader:
             sub_dataset = concatenate_datasets([sub_dataset1, sub_dataset2])
 
         # sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
-        sub_dataset = sub_dataset.map(lambda example: {
-            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
-        sub_dataset = sub_dataset.remove_columns([col for col in sub_dataset.column_names if col not in ["text"]])
+        
         return sub_dataset
 
     """
@@ -260,7 +265,7 @@ class DataLoader:
             sub_dataset = load_dataset("fka/awesome-chatgpt-prompts")["train"]
             sub_dataset = sub_dataset.map(lambda example: {"text": example["prompt"], "label": 0})
         elif dataset_type in ["jigsaw", "jigsaw-toxic-only"]:
-            sub_dataset = self.load_toxic_sophisticated_data(desired_number=80000)
+            sub_dataset = self.load_toxic_sophisticated_data(desired_number=150000)
             if dataset_type == "jigsaw-toxic-only":
                 sub_dataset = sub_dataset.filter(lambda example: example["label"] == 1)
         elif dataset_type == "gibberish":
