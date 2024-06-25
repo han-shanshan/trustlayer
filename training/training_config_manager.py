@@ -10,7 +10,7 @@ class TrainingConfigManager:
         self.config = config
 
     def get_training_config(self, output_dir, batch_size=8):
-        if self.model in [MODEL_NAME_TINYLAMMA, FOX] and self.task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+        if self.task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=10,  # number of training epochs
@@ -32,7 +32,7 @@ class TrainingConfigManager:
                 report_to=["wandb"],
                 load_best_model_at_end=True
             )
-        if self.model in [MODEL_NAME_TINYLAMMA, FOX]:
+        else:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=10,  # number of training epochs
@@ -43,7 +43,7 @@ class TrainingConfigManager:
                 logging_steps=10,  # log every 10 steps
                 save_strategy="epoch",  # save checkpoint every epoch
                 evaluation_strategy="epoch",
-                learning_rate=5e-5,  # learning rate, based on QLoRA paper
+                learning_rate=5e-4,  # learning rate, based on QLoRA paper
                 bf16=True,  # use bfloat16 precision
                 tf32=True,  # use tf32 precision
                 max_grad_norm=0.3,  # max gradient norm based on QLoRA paper
@@ -53,19 +53,19 @@ class TrainingConfigManager:
                 load_best_model_at_end=True
             )
 
-        return TrainingArguments(
-            output_dir=output_dir,
-            evaluation_strategy="epoch",
-            save_strategy="epoch",
-            learning_rate=2e-5,
-            per_device_train_batch_size=batch_size,
-            per_device_eval_batch_size=batch_size,
-            num_train_epochs=20,
-            weight_decay=0.01,
-            load_best_model_at_end=True,
-            # metric_for_best_model=metric_name,
-            # push_to_hub=True,
-        )
+        # return TrainingArguments(
+        #     output_dir=output_dir,
+        #     evaluation_strategy="epoch",
+        #     save_strategy="epoch",
+        #     learning_rate=2e-5,
+        #     per_device_train_batch_size=batch_size,
+        #     per_device_eval_batch_size=batch_size,
+        #     num_train_epochs=20,
+        #     weight_decay=0.01,
+        #     load_best_model_at_end=True,
+        #     # metric_for_best_model=metric_name,
+        #     # push_to_hub=True,
+        # )
 
     def get_lora_config(self):
         if self.model in [MODEL_NAME_TINYLAMMA, FOX]:

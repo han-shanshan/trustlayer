@@ -151,6 +151,10 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                                                      trust_remote_code=True)
         model.config.pad_token_id = model.config.eos_token_id
         print(f"dataset = {dataset}")
+        # print(f"{dataset['train'][0]}")
+        # print(f"{dataset['train'][1]}")
+        # print(f"{dataset['train'][2]}")
+        # exit(0)
 
         tokenizer = AutoTokenizer.from_pretrained(FOX, use_fast=False)
         tokenizer.pad_token = tokenizer.eos_token

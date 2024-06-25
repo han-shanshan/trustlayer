@@ -134,26 +134,3 @@ class InferenceEngine:
         metrics = compute_metrics(labels, predictions, probabilities)
         print(f"metrics = {metrics}")
 
-    # def evaluate(self, dataset, phase="train"):
-    #     labels = dataset[phase]["label"]
-    #     dataset = dataset.remove_columns('label')
-    #     data_processor = DataProcessor(task_name=self.task_name)
-    #     encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=self.tokenizer)
-    #     print(f"encoded_dataset in inference engine = {encoded_dataset}")
-    #     encoded_dataset = encoded_dataset[phase]
-    #     predictions = []
-    #     probabilities = []
-
-    #     for i in range(len(encoded_dataset)):
-    #         print(f"encoded_dataset in inference engine = {encoded_dataset}")
-    #         encoding = {k: v.to(self.model.device) for k, v in encoded_dataset[i].items()}
-    #         print(f"encoding =========================== {encoding}")
-    #         outputs = self.model(**encoding)
-    #         logits = outputs.logits
-    #         predicted_label_idx = torch.argmax(logits, dim=-1).item()
-    #         probability = sigmoid(logits[:, 1].cpu()).item()
-    #         predictions.append(predicted_label_idx)
-    #         probabilities.append(probability)
-
-    #     metrics = compute_metrics(labels, predictions, probabilities)
-    #     print(f"metrics = {metrics}")

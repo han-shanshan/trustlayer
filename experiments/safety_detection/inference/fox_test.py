@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
 
     inference_engine = InferenceEngine(default_task=TASK_NAME, base_model=FOX,  #adapter_path=None)
-                                       adapter_path="./fox_adapters/checkpoint-23000-all_in_one_unsafe_contents-2024-06-05 12:50:39.857450-final")
+                                       adapter_path="./fox_adapters/Fox-1-1.6B-all_in_one_unsafe_contents-2024-06-25 03:13:25.602498/checkpoint-890")
                                     #    adapter_path="./fox_adapters/raid-toxicity-final")
                                     #    adapter_path="./fox_adapters/dulcet-bee-14/checkpoint-23000-all_in_one_unsafe_contents-final/")
     # print(inference_engine.inference(text))

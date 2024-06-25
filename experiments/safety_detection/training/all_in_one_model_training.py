@@ -23,7 +23,7 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
     torch.cuda.empty_cache()
-    run_id = wandb.init(project=f"{TASK_NAME} with FOX-New")
+    run_id = wandb.init(project=f"{TASK_NAME} with FOX")
  
     dataset_types = [
         "mt-bench", "HEx-PHI", # "toxic-chat",
