@@ -1,7 +1,7 @@
 from transformers import pipeline
 from data_operation.data_reader import DataReader
 import torch
-from utils.constants import FOX_BASE_GPU
+from utils.constants import FOX
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"
@@ -35,7 +35,7 @@ class ExperimentModelLoader:
             return pipeline("text-generation", model="tiiuae/falcon-40b-instruct", return_full_text=False,
                             torch_dtype=torch.bfloat16, max_new_tokens=1024, device_map="auto", trust_remote_code=True)
         if self.model_name == FOX_MODEL:
-            return pipeline("text-generation", max_new_tokens=1024, model=FOX_BASE_GPU, return_full_text=False,
+            return pipeline("text-generation", max_new_tokens=1024, model=FOX, return_full_text=False,
                             device=5)
         if self.model_name == LLAMA3_8B_MODEL:
             hf_key = DataReader().read_hf_apikey()

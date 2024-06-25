@@ -9,7 +9,7 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
 from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX_BASE_GPU, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
+    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
     CUSTOMIZED_HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
     HALLUCINATION_EXPLANATION_TASK_NAME
 from data_operation.data_processor import DataProcessor
@@ -17,6 +17,7 @@ import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
 from scipy.special import expit as sigmoid
 from datetime import datetime
+from datasets import DatasetDict
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -72,7 +73,7 @@ class CustomCallback(TrainerCallback):
 
 def get_tokenizer(model, base_model_name):
     tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-    if base_model_name in [MODEL_NAME_TINYLAMMA, FOX_BASE_GPU]:
+    if base_model_name in [MODEL_NAME_TINYLAMMA, FOX]:
         # tokenizer.pad_token = tokenizer.eos_token
         # tokenizer.padding_side = 'right'  # to prevent warnings
         tokenizer.pad_token = tokenizer.eos_token
@@ -160,8 +161,6 @@ class TrainingEngine:
         config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
         model = get_peft_model(model, config_manager.get_lora_config())
         model.print_trainable_parameters()  # see % trainable parameters
-        
-            
 
         peft_trainer = Trainer(
             model=model,
@@ -176,18 +175,9 @@ class TrainingEngine:
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["test"])
         print("Test Results with hybrid test data:", test_results)
         model.save_pretrained(output_dir + "-final")
-
-
-        from datasets import DatasetDict
         dataset = DataLoader().process_a_subdataset_for_all_in_one_task(dataset_type="toxic-chat")
-        dataset = DatasetDict({
-            'train': dataset 
-        })
+        dataset = DatasetDict({'train': dataset})
 
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
         test_results = peft_trainer.evaluate(eval_dataset=encoded_dataset["train"])
         print("Test Results with toxic-chat data:", test_results)
-
-
-
-

@@ -12,7 +12,7 @@ CUSTOMIZED_HALLUCINATION_TASK_NAME = "customized_hallucination"
 ############ MODEL #############
 MODEL_NAME_BERT_BASE = "google-bert/bert-base-uncased"
 MODEL_NAME_TINYLAMMA = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-FOX_BASE_GPU = "/raid/user/models/femma_1b_stage2-pt9/checkpoint-363750"
+FOX = "tensoropera/Fox-1-1.6B"
 # FOX_BASE_GPU = "/raid/user/models/femma_1b_stage3_aggressive_v2/checkpoint-23000"
 
 EXPLANATION_RESPONSE_TEMPLATE = "### Response:"

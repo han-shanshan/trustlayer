@@ -2,7 +2,7 @@ from customized_hallucination_pipeline.offline_processing.hallucination_training
     HallucinationTrainingDataProcessor
 from customized_hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from utils.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
-    FOX_BASE_GPU
+    FOX
 from inference.inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
@@ -68,7 +68,7 @@ class HallucinationTrainingEngine(TrainingEngine):
 MODEL_NAME = MODEL_NAME_TINYLAMMA
 
 if __name__ == '__main__':
-    trainer = HallucinationTrainingEngine(base_model_name=FOX_BASE_GPU)
+    trainer = HallucinationTrainingEngine(base_model_name=FOX)
     trainer.train()
     text = "i'm happy hahaha"
 

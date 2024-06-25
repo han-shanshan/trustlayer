@@ -13,8 +13,8 @@ from transformers import Trainer
 from peft import get_peft_model
 import torch
 from training.training_config_manager import TrainingConfigManager
-from training.training_engine import TrainingEngine, CustomCallback, compute_metrics
-from utils.constants import FOX_BASE_GPU, EXPLANATION_RESPONSE_TEMPLATE
+from training.training_engine import TrainingEngine, CustomCallback
+from utils.constants import FOX, EXPLANATION_RESPONSE_TEMPLATE
 from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
@@ -43,7 +43,7 @@ roc_auc_metric = evaluate.load("roc_auc")
 class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
     def __init__(
             self,
-            tokenizer, 
+            tokenizer,
             response_template: str,
             ignore_index: int = -100,
             mlm: bool = True,
@@ -133,7 +133,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
     def get_tokenizer(self, base_model_name):
         return
 
-    def train(self, desired_total_data_n=None,batch_size=16):
+    def train(self, desired_total_data_n=None, batch_size=16):
         t = str(datetime.now())
         data_processor = DataProcessor(task_name=self.task_name)
         dataset, _, _, _ = data_processor.get_dataset(dataset_types=self.dataset_types,
@@ -151,19 +151,15 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                                                      trust_remote_code=True)
         model.config.pad_token_id = model.config.eos_token_id
         print(f"dataset = {dataset}")
-        print(f"{dataset['train'][0]}")
-        print(f"{dataset['train'][1]}")
-        print(f"{dataset['train'][2]}")
-        exit(0)
 
-        tokenizer = AutoTokenizer.from_pretrained(FOX_BASE_GPU, use_fast = False)
+        tokenizer = AutoTokenizer.from_pretrained(FOX, use_fast=False)
         tokenizer.pad_token = tokenizer.eos_token
 
         def tokenize_function(examples):
-            inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192+1,
+            inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
                                return_tensors='pt')
             return inputs
-        
+
         # dataset.cleanup_cache_files()
         encoded_dataset = dataset.map(tokenize_function, batched=True, remove_columns=dataset["train"].column_names)
         encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
@@ -177,7 +173,6 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         model.resize_token_embeddings(len(tokenizer))
         print(f"dataset = {dataset}")
 
-
         peft_trainer = Trainer(
             model=model,
             args=config_manager.get_training_config(output_dir=output_dir, batch_size=batch_size),
@@ -185,7 +180,8 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
             eval_dataset=encoded_dataset["validation"],
             # tokenizer=tokenizer,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
-            data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False, response_template=EXPLANATION_RESPONSE_TEMPLATE)
+            data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
+                                                          response_template=EXPLANATION_RESPONSE_TEMPLATE)
             # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
         )
 
@@ -194,23 +190,35 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
 
-
         results = []
         real_results = []
-        probabilities = []
         with torch.no_grad():
             model.eval()
 
-            for j in range(len(dataset["test"])):
+            for j in range(5):
+                # for j in range(len(dataset["test"])):
+                # text = DataLoader.get_llama_prompt_for_hallucination_reasoning_task(dataset["test"][j]['text'], "")
                 text = dataset["test"][j]['text']
                 print(f"text = {text}")
                 inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
-                                    return_tensors='pt', return_token_type_ids=False).to(model.device)
-                output = model.generate(**inputs, max_new_tokens=16, output_logits=True, return_dict_in_generate=True, output_scores=True)
-        
+                                   return_tensors='pt', return_token_type_ids=False).to(model.device)
+                # output = model(**inputs.to(model.device))
+                # model.generate(**inputs, max_new_token=)
+                output = model.generate(**inputs, max_new_tokens=16, output_logits=True, return_dict_in_generate=True,
+                                        output_scores=True)
+
                 logits = output.logits
+                # output_token_ids = [torch.argmax(t).item() for t in logits]
+                # print(f"====== {tokenizer.decode(output.sequences[0].tolist())}")
+                # print(f"===-----=== {tokenizer.decode(output_token_ids)}")
+                # print(f"l  = {logits}")
+                # print(f"{type(logits)=}")
+                # print(f"keys = {output.keys()}")
+                # print(f"shape = {logits.shape = }")
                 next_word_logits = logits[0]
+
                 probs = torch.softmax(next_word_logits, dim=-1)
+                # print("----------")
 
                 prob_yes = 0
                 prob_no = 0
@@ -219,7 +227,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                     top_probs, top_indices = torch.topk(probs, top_k_num)
                     prob_list = top_probs[0].tolist()
                     top_indice = top_indices[0].tolist()
-                    # print(f"top_indices = {top_indices}")
+                    print(f"top_indices = {top_indices}")
 
                     for idx in range(len(top_indice)):
                         next_word = tokenizer.decode([top_indice[idx]])
@@ -237,18 +245,11 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                         results.append(0)
                         break
 
-                probabilities.append(results[j])
-
                 print(
                     f"first token: {tokenizer.decode([top_indice[0]])}, desired output = {str(dataset['test'][j]['output']).lower()}, prob = {results[j]}")
 
-                if str(dataset["test"][j]['output'].strip()).lower() == "yes":
+                if str(dataset["test"][j]['output']).lower() == "yes":
                     real_results.append(1)
                 else:
                     real_results.append(0)
-            print(f"real_results = {real_results}")
-            print(f"results = {results}")
-            print(f"probabilities = {probabilities}")
-            metrics = compute_metrics(labels=real_results, predictions=results, probabilities=probabilities)
-            print(f"metrics = {metrics}")
 

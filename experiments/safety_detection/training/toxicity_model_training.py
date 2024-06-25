@@ -1,9 +1,9 @@
-from utils.constants import TOXICITY_TASK_NAME, FOX_BASE_GPU
+from utils.constants import TOXICITY_TASK_NAME, FOX
 from training.training_engine import TrainingEngine
 import os
-
+import wandb
 TASK_NAME = TOXICITY_TASK_NAME
-MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
+MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 

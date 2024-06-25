@@ -2,12 +2,12 @@ import os
 from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
 import torch
 import json
-from utils.constants import HALLUCINATION_EXPLANATION_TASK_NAME, FOX_BASE_GPU, MODEL_NAME_TINYLAMMA
+from utils.constants import HALLUCINATION_EXPLANATION_TASK_NAME, FOX
 import wandb
 from datasets import load_dataset
 
 TASK_NAME = HALLUCINATION_EXPLANATION_TASK_NAME
-MODEL_NAME = FOX_BASE_GPU  
+MODEL_NAME = FOX
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections

@@ -1,14 +1,14 @@
 
 from training.training_engine import TrainingEngine
 import os
-from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, FOX_BASE_GPU
+from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, FOX
 import wandb
 from datasets import load_dataset
 import torch
 
 
 TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
-MODEL_NAME = FOX_BASE_GPU  # "google-bert/bert-base-uncased"
+MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections

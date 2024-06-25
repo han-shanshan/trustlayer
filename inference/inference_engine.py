@@ -5,7 +5,7 @@ from data_operation.data_processor import DataProcessor
 from training.training_engine import compute_metrics, get_tokenizer
 from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, \
     HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
-    FOX_BASE_GPU
+    FOX
 import torch
 import json
 import os
@@ -37,7 +37,7 @@ class InferenceEngine:
             self.problem_type = "single_label_classification"
         else:
             self.problem_type = "multi_label_classification"
-        if base_model == FOX_BASE_GPU:
+        if base_model == FOX:
             self.model_name = "Fox"
         else:
             self.model_name = base_model.split("/")[1]
