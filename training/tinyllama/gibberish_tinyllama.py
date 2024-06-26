@@ -17,5 +17,5 @@ if __name__ == '__main__':
     trainer.train()
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=TASK_NAME)
+    inference_engine = InferenceEngine(task_name=TASK_NAME)
     print(inference_engine.inference(text))

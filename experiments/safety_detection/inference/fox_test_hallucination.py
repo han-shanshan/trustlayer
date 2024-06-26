@@ -1,14 +1,13 @@
-# from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
-from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
-from utils.constants import FOX, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+from data_operation.data_loader import DataLoader
+from inference.reasoning_inference_engine import ReasoningInferenceEngine
+from utils.constants import FOX, HALLUCINATION_EXPLANATION_TASK_NAME
 from inference.inference_engine import InferenceEngine
 import os
 from datasets import load_dataset
 
-
 os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7'
 
-TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+TASK_NAME = HALLUCINATION_EXPLANATION_TASK_NAME
 MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
 
 """
@@ -16,20 +15,23 @@ training data: https://huggingface.co/datasets/deepset/prompt-injections
 """
 
 if __name__ == '__main__':
-    # text = "hello"
-    # text = "i'm happpy hahaha"
-    # dataset = load_dataset('csv', data_files="test_data/all_in_one_unsafe_contents_test_data.csv")["train"]
-    # dataset = load_dataset('csv', data_files="./fox_adapters/dulcet-bee-14/all_in_one_unsafe_contents_test_data.csv")["train"]
-    # print(f"dataset size = {len(dataset)}")
+    input_output_pair = DataLoader().construct_input_output_pairs_for_hall_detection(
+        question="[Human]: Do you like Iron Man [Assistant]: Sure do! Robert Downey Jr. is a favorite. [Human]: Yes i "
+                 "like him too did you know he also was in Zodiac a crime fiction film.",
+        knowledge="Iron Man is starring Robert Downey Jr.Robert Downey Jr. starred in Zodiac (Crime Fiction "
+                  "Film)Zodiac (Crime Fiction Film) is starring Jake Gyllenhaal",
+        llm_answer="I like crime fiction! Didn't know RDJ was in there. Jake Gyllenhaal starred as well.",
+        output=""  # "No, the answer can be deduced from the context. "
+    )
+    text = DataLoader().get_llama_prompt_for_hallucination_reasoning_task(input_output_pair["input"],
+                                                                          input_output_pair["output"])
+    print(text)
 
-    dataset = prepare_toxic_chat_test_data()
+    inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX,
+                                       adapter_path="./fox_adapters/Fox-1-1.6B-hallucination_explanation-2024-06-25 "
+                                                    "17:25:08.253047-final")
 
-
-    inference_engine = InferenceEngine(default_task=TASK_NAME, base_model=FOX,  #adapter_path=None)
-                                       adapter_path="./fox_adapters/checkpoint-23000-all_in_one_unsafe_contents-2024-06-05 12:50:39.857450-final")
-                                    #    adapter_path="./fox_adapters/raid-toxicity-final")
-                                    #    adapter_path="./fox_adapters/dulcet-bee-14/checkpoint-23000-all_in_one_unsafe_contents-final/")
-    # print(inference_engine.inference(text))
+    print(inference_engine.inference(text))
     # counter = 0
     # print(dataset["text"][:5])
     # print(dataset["label"][:5])
@@ -39,4 +41,4 @@ if __name__ == '__main__':
     #     print(inference_engine.inference(text))
     #     counter += 1
     # print(inference_engine.evaluation(texts=dataset["text"], labels=dataset["label"]))
-    print(inference_engine.evaluate(dataset=dataset))
+    # print(inference_engine.evaluate(dataset=dataset))

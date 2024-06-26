@@ -63,16 +63,3 @@ class HallucinationTrainingEngine(TrainingEngine):
         )
         bert_peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
-
-
-MODEL_NAME = MODEL_NAME_TINYLAMMA
-
-if __name__ == '__main__':
-    trainer = HallucinationTrainingEngine(base_model_name=FOX)
-    trainer.train()
-    text = "i'm happy hahaha"
-
-    inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME,
-                                       config=HALLUCINATION_INFERENCE_CONFIG,
-                                       problem_type="single_label_classification")
-    print(inference_engine.inference([text, text]))

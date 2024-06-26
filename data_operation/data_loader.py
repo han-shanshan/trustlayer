@@ -74,19 +74,21 @@ class DataLoader:
 
         test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
             data_num_dict, dataset_types, dataset_list)
-        
-        
+
         training_dataset = training_dataset.map(lambda example: {
-        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
+            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
         validation_dataset = validation_dataset.map(lambda example: {
-        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
+            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
         test_dataset = test_dataset.map(lambda example: {
-        "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], "")})
-        
+            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], "")})
+
         datasets = DatasetDict({
-            'train': training_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text"]]),
-            'validation': validation_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text"]]),
-            'test': test_dataset.remove_columns([col for col in training_dataset.column_names if col not in ["text", "output"]])
+            'train': training_dataset.remove_columns(
+                [col for col in training_dataset.column_names if col not in ["text"]]),
+            'validation': validation_dataset.remove_columns(
+                [col for col in training_dataset.column_names if col not in ["text"]]),
+            'test': test_dataset.remove_columns(
+                [col for col in training_dataset.column_names if col not in ["text", "output"]])
         })
         print(f"final datasets = {datasets}")
         return datasets
@@ -95,9 +97,10 @@ class DataLoader:
     def get_llama_prompt_for_hallucination_reasoning_task(input, output):
         return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> According to the Question and the Contexts, is there any hallucination in the LLM Answer?  {input}. {EXPLANATION_RESPONSE_TEMPLATE}[/INST] {output}. "
 
-    # @staticmethod
-    # def get_llama_prompt_for_hallucination_reasoning_task(input):
-    #     return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> Is there hallucination in the Answer based on the Question and the Context?  {input}. [/INST] "
+    @staticmethod
+    def construct_input_output_pairs_for_hall_detection(question, knowledge, llm_answer, output=""):
+        return {"input": f"Question: {question}; Context: {knowledge}; LLM Answer: {llm_answer}",
+                "output": output}
 
     def process_a_subdataset_for_hybrid_hallucination_data(self, dataset_type):
         sub_dataset = None
@@ -112,16 +115,16 @@ class DataLoader:
             sub_dataset.filter(
                 lambda example: example['question'] is not None and example["knowledge"] is not None and example[
                     "right_answer"] is not None and example["hallucinated_answer"] is not None)
-            sub_dataset1 = sub_dataset.map(lambda example: {
-                "input": f"Question: {example['question']}; Context: {example['knowledge']}; LLM Answer: {example['right_answer']}",
-                "output": "No, the answer can be deduced from the context. "})
-            sub_dataset2 = sub_dataset.map(lambda example: {
-                "input": f"Question: {example['question']}; Context: {example['knowledge']}; LLM Answer: {example['hallucinated_answer']}",
-                "output": f"Yes, the answer cannot be deduced from the context or the answer is useless. "})
+            sub_dataset1 = sub_dataset.map(lambda example: self.construct_input_output_pairs_for_hall_detection(
+                example['question'], example['knowledge'], example['right_answer'],
+                output="No, the answer can be deduced from the context. "))
+            sub_dataset2 = sub_dataset.map(lambda example: self.construct_input_output_pairs_for_hall_detection(
+                example['question'], example['knowledge'], example['hallucinated_answer'],
+                output="Yes, the answer cannot be deduced from the context or the answer is useless. "))
             sub_dataset = concatenate_datasets([sub_dataset1, sub_dataset2])
 
         # sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
-        
+
         return sub_dataset
 
     """

@@ -14,6 +14,6 @@ training data: https://huggingface.co/datasets/deepset/prompt-injections
 if __name__ == '__main__':
     text = "i'm happy hahaha"
 
-    inference_engine = InferenceEngine(default_task=TASK_NAME, base_model=FOX,
+    inference_engine = InferenceEngine(task_name=TASK_NAME, base_model=FOX,
                                        adapter_path="/fox_adapters/checkpoint-23000-all_in_one_unsafe_contents-final/")
     print(inference_engine.inference([text]))

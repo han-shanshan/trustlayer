@@ -11,5 +11,5 @@ if __name__ == '__main__':
     # trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
     # trainer.train()
     text = "i'm happy hahaha"
-    inference_engine = InferenceEngine(default_task=TOPIC_TASK_NAME)
+    inference_engine = InferenceEngine(task_name=TOPIC_TASK_NAME)
     print(inference_engine.inference(text))

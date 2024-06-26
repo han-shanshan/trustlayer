@@ -11,7 +11,7 @@ class HallucinationTypeDetector(BaseTrustDetector):
         super().__init__(config)
         self.res = None
         print(f"config = {config}")
-        self.inference_engine = InferenceEngine(default_task=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
+        self.inference_engine = InferenceEngine(task_name=CUSTOMIZED_HALLUCINATION_TASK_NAME, config=config,
                                                 problem_type="single_label_classification")
 
     def get_detection_results(self, output, reference_text=None):
