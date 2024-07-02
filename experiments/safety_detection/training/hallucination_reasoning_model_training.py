@@ -34,9 +34,9 @@ if __name__ == '__main__':
     }
 
     trainer = HallucinationReasoningTrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
-                                                   config={"metrics_average": "macro", "dataset_types": dataset_types,
+                                                   config={"dataset_types": dataset_types,
                                                            "data_num_dict": data_num_dict})
-    trainer.train(batch_size=16)
+    trainer.process(batch_size=16)
     # trainer.train()
     # text = "i'm happy hahaha"
     #

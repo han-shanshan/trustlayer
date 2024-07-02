@@ -142,7 +142,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{idx}.csv")
         return dataset
 
-    def get_pretrained_model(self, tokenizer=None):
+    def get_pretrained_model(self):
         model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
                                                      # device_map="auto",
                                                      torch_dtype=torch.float32,
@@ -154,7 +154,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
 
         model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=self.base_model_name))
         model.print_trainable_parameters()  # see % trainable parameters
-        model.resize_token_embeddings(len(tokenizer))
+        
 
         return model
 
@@ -239,7 +239,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         peft_trainer = Trainer(
             model=model,
             args=TrainingConfigManager.get_training_config(output_dir=output_dir,
-                                                           task_name=self.task_name, batch_size=batch_size),
+            task_name=self.task_name, batch_size=batch_size),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             # tokenizer=tokenizer,
@@ -259,11 +259,12 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         tokenizer.pad_token = tokenizer.eos_token
         return tokenizer
 
-    def process(self, desired_total_data_n=None, batch_size=16):
+    def process(self, batch_size=16):
         t = str(datetime.now())
         dataset = self.get_training_data(idx=t)
         model = self.get_pretrained_model()
         tokenizer = self.get_tokenizer(model, self.base_model_name)
+        model.resize_token_embeddings(len(tokenizer))
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
-        trainer = self.train(model=model, encoded_dataset=encoded_dataset, batch_size=batch_size, idx=t)
+        trainer = self.train(model=model, encoded_dataset=encoded_dataset, batch_size=batch_size, tokenizer=tokenizer, idx=t)
         self.evaluate(model=trainer.model, dataset=dataset, tokenizer=tokenizer)
