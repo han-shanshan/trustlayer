@@ -11,7 +11,7 @@ ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME = "all_in_one_unsafe_contents"
 ############ MODEL #############
 MODEL_NAME_BERT_BASE = "google-bert/bert-base-uncased"
 MODEL_NAME_TINYLAMMA = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-FOX = "tensoropera/Fox-1-1.6B"
+FOX = "tensoropera/Fox-1-1.6B-Instruct-v0.1"
 # FOX_BASE_GPU = "/raid/user/models/femma_1b_stage3_aggressive_v2/checkpoint-23000"
 
 EXPLANATION_RESPONSE_TEMPLATE = "### Response:"
