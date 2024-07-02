@@ -25,36 +25,11 @@ class ReasoningInferenceEngine(InferenceEngine):
     """
     https://huggingface.co/docs/peft/en/quicktour
     """
-    def inference(self, text, text_pair=None):
-        encoding = self.tokenizer(text, return_tensors="pt")
-        outputs = self.model(**encoding)
-        print(outputs)
-        return outputs
+    def inference(self, text, text_pair=None, max_new_tokens=100):
+        input_ids = self.tokenizer(text, return_tensors="pt").input_ids
+        outputs = self.model.generate(input_ids=input_ids, max_new_tokens=max_new_tokens)
+        plaintext_result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return plaintext_result
 
     def evaluate(self, dataset):
         pass
-        # labels = dataset["label"]
-        # texts = dataset["text"]
-        # # dataset = dataset.remove_columns('label')
-        # predictions = []
-        # probabilities = []
-        # counter = 0
-        # for text in texts:
-        #     encoding = self.tokenizer(text, padding="max_length", truncation=True, max_length=516,
-        #                               return_tensors="pt")
-        #     encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
-        #     # print(f"encoding =========================== {encoding}")
-        #     outputs = self.model(**encoding)
-        #     logits = outputs.logits
-        #     predicted_label_idx = torch.argmax(logits, dim=-1).item()
-        #     probability = sigmoid(logits[:, 1].cpu().detach()).item()
-        #     predictions.append(predicted_label_idx)
-        #     # print(f"predicted_label_idx = {predicted_label_idx}")
-        #     probabilities.append(probability)
-        #
-        #     if counter % 100 == 0:
-        #         print(f"label = {predicted_label_idx}, real label = {labels[counter]}, text = {text}")
-        #     counter += 1
-        #
-        # metrics = compute_metrics(labels, predictions, probabilities)
-        # print(f"metrics = {metrics}")

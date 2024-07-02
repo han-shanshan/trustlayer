@@ -20,25 +20,13 @@ if __name__ == '__main__':
                  "like him too did you know he also was in Zodiac a crime fiction film.",
         knowledge="Iron Man is starring Robert Downey Jr.Robert Downey Jr. starred in Zodiac (Crime Fiction "
                   "Film)Zodiac (Crime Fiction Film) is starring Jake Gyllenhaal",
-        llm_answer="I like crime fiction! Didn't know RDJ was in there. Jake Gyllenhaal starred as well.",
-        output=""  # "No, the answer can be deduced from the context. "
+        llm_answer="I'm not a fan of crime movies, but I did know that RDJ starred in Zodiac with Tom Hanks.",
+        output=""  #Yes  # "No, the answer can be deduced from the context. "
     )
     text = DataLoader().get_llama_prompt_for_hallucination_reasoning_task(input_output_pair["input"],
                                                                           input_output_pair["output"])
     print(text)
-
     inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX,
-                                       adapter_path="./fox_adapters/Fox-1-1.6B-hallucination_explanation-2024-06-25 "
-                                                    "17:25:08.253047-final")
-
+                                                adapter_path="./fox_adapters/Fox-1-1.6B-hallucination_explanation"
+                                                             "-2024-06-25 17:25:08.253047-final")
     print(inference_engine.inference(text))
-    # counter = 0
-    # print(dataset["text"][:5])
-    # print(dataset["label"][:5])
-    # print(dataset)
-    # for text in dataset["text"][:5]:
-    #     print(f", text = {text}")
-    #     print(inference_engine.inference(text))
-    #     counter += 1
-    # print(inference_engine.evaluation(texts=dataset["text"], labels=dataset["label"]))
-    # print(inference_engine.evaluate(dataset=dataset))

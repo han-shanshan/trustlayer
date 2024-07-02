@@ -1,26 +1,20 @@
-from typing import Dict, List, Union, Any, Optional
 import warnings
-from transformers.modeling_utils import unwrap_model
-from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
-from transformers.trainer import _is_peft_model
-# from trl import DataCollatorForCompletionOnlyLM
-from data_operation.data_loader import DataLoader
 import numpy as np
-from datasets import load_metric, Dataset
-from transformers import AutoTokenizer, EarlyStoppingCallback, TrainerCallback, AutoModelForCausalLM, \
-    DataCollatorForLanguageModeling, EvalPrediction
+from datasets import load_metric
+from transformers import AutoTokenizer, EarlyStoppingCallback, AutoModelForCausalLM, DataCollatorForLanguageModeling
 from transformers import Trainer
 from peft import get_peft_model
 import torch
+from data_operation.data_loader import DataLoader
+from training.classification_training_engine import CustomCallback
 from training.training_config_manager import TrainingConfigManager
-from training.training_engine import TrainingEngine, CustomCallback
-from utils.constants import FOX, EXPLANATION_RESPONSE_TEMPLATE
+from training.training_engine import TrainingEngine
+from utils.constants import FOX, EXPLANATION_RESPONSE_TEMPLATE, HALLUCINATION_EXPLANATION_TASK_NAME
 from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
 from datetime import datetime
-import torch.nn as nn
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy")
@@ -28,6 +22,7 @@ precision_metric = load_metric("precision")
 recall_metric = load_metric("recall")
 f1_metric = load_metric("f1")
 roc_auc_metric = evaluate.load("roc_auc")
+
 
 # tokenizer = AutoTokenizer.from_pretrained(FOX_BASE_GPU)
 # tokenizer.pad_token = tokenizer.eos_token
@@ -126,39 +121,44 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
 class HallucinationReasoningTrainingEngine(TrainingEngine):
     def __init__(self, base_model_name, task_name, config=None):
         super().__init__(base_model_name, task_name, config)
+        self.data_processor = DataProcessor(task_name=self.task_name)
+        if self.config is not None:
+            if "dataset_types" in self.config:
+                self.dataset_types = self.config["dataset_types"]
+            else:
+                self.dataset_types = None
+            if "data_num_dict" in self.config:
+                self.data_num_dict = self.config["data_num_dict"]
+            else:
+                self.data_num_dict = None
 
-    def set_task_type(self, task_name):
-        self.task_name = task_name
-
-    def get_tokenizer(self, base_model_name):
-        return
-
-    def train(self, desired_total_data_n=None, batch_size=16):
-        t = str(datetime.now())
-        data_processor = DataProcessor(task_name=self.task_name)
-        dataset, _, _, _ = data_processor.get_dataset(dataset_types=self.dataset_types,
-                                                      data_num_dict=self.data_num_dict,
-                                                      desired_total_data_n=desired_total_data_n)
-        write_hf_dataset_to_csv(dataset['train'], f"{self.task_name}_train_data_{t}.csv")
-        write_hf_dataset_to_csv(dataset['validation'], f"{self.task_name}_validation_data_{t}.csv")
+    def get_training_data(self, idx=None):
+        dataset = DataLoader().load_reasoning_data(task_name=self.task_name, dataset_types=self.dataset_types,
+                                                   data_num_dict=self.data_num_dict)
+        write_hf_dataset_to_csv(dataset['train'], f"{self.task_name}_train_data_{idx}.csv")
+        write_hf_dataset_to_csv(dataset['validation'], f"{self.task_name}_validation_data_{idx}.csv")
         print(f"dataset in training: {dataset}")
         print(f"sample data = {dataset['train'][0]}")
-        output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + t
-        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{t}.csv")
+        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{idx}.csv")
+        return dataset
+
+    def get_pretrained_model(self, tokenizer=None):
         model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
                                                      # device_map="auto",
                                                      torch_dtype=torch.float32,
                                                      trust_remote_code=True)
         model.config.pad_token_id = model.config.eos_token_id
-        print(f"dataset = {dataset}")
-        # print(f"{dataset['train'][0]}")
-        # print(f"{dataset['train'][1]}")
-        # print(f"{dataset['train'][2]}")
-        # exit(0)
+        model.enable_input_require_grads()
+        # this line solves the bug: RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
+        # model.config.use_cache = False
 
-        tokenizer = AutoTokenizer.from_pretrained(FOX, use_fast=False)
-        tokenizer.pad_token = tokenizer.eos_token
+        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=self.base_model_name))
+        model.print_trainable_parameters()  # see % trainable parameters
+        model.resize_token_embeddings(len(tokenizer))
 
+        return model
+
+    def get_encoded_dataset(self, dataset, tokenizer):
         def tokenize_function(examples):
             inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
                                return_tensors='pt')
@@ -168,32 +168,9 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         encoded_dataset = dataset.map(tokenize_function, batched=True, remove_columns=dataset["train"].column_names)
         encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
         print(encoded_dataset)
+        return encoded_dataset
 
-        config_manager = TrainingConfigManager(self.task_name, self.base_model_name, config=self.config)
-        model.enable_input_require_grads()  # this line solves this bug: RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
-        # model.config.use_cache = False
-        model = get_peft_model(model, config_manager.get_lora_config())
-        model.print_trainable_parameters()  # see % trainable parameters
-        model.resize_token_embeddings(len(tokenizer))
-        print(f"dataset = {dataset}")
-
-        peft_trainer = Trainer(
-            model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=batch_size),
-            train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
-            eval_dataset=encoded_dataset["validation"],
-            # tokenizer=tokenizer,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
-            data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
-                                                          response_template=EXPLANATION_RESPONSE_TEMPLATE)
-            # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-        )
-
-        print(f"EXPLANATION_RESPONSE_TEMPLATE = {EXPLANATION_RESPONSE_TEMPLATE}")
-
-        peft_trainer.train()
-        model.save_pretrained(output_dir + "-final")
-
+    def evaluate(self, model=None, dataset=None, tokenizer=None):
         results = []
         real_results = []
         with torch.no_grad():
@@ -204,56 +181,89 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                 # text = DataLoader.get_llama_prompt_for_hallucination_reasoning_task(dataset["test"][j]['text'], "")
                 text = dataset["test"][j]['text']
                 print(f"text = {text}")
-                inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
-                                   return_tensors='pt', return_token_type_ids=False).to(model.device)
-                # output = model(**inputs.to(model.device))
-                # model.generate(**inputs, max_new_token=)
-                output = model.generate(**inputs, max_new_tokens=16, output_logits=True, return_dict_in_generate=True,
-                                        output_scores=True)
-
-                logits = output.logits
-                # output_token_ids = [torch.argmax(t).item() for t in logits]
-                # print(f"====== {tokenizer.decode(output.sequences[0].tolist())}")
-                # print(f"===-----=== {tokenizer.decode(output_token_ids)}")
-                # print(f"l  = {logits}")
-                # print(f"{type(logits)=}")
-                # print(f"keys = {output.keys()}")
-                # print(f"shape = {logits.shape = }")
-                next_word_logits = logits[0]
-
-                probs = torch.softmax(next_word_logits, dim=-1)
-                # print("----------")
-
-                prob_yes = 0
-                prob_no = 0
-                top_k_num = 10
-                while True:
-                    top_probs, top_indices = torch.topk(probs, top_k_num)
-                    prob_list = top_probs[0].tolist()
-                    top_indice = top_indices[0].tolist()
-                    print(f"top_indices = {top_indices}")
-
-                    for idx in range(len(top_indice)):
-                        next_word = tokenizer.decode([top_indice[idx]])
-                        if str(next_word).lower() == "yes":  # the result might be "Yes", yes", "No", and "no"
-                            prob_yes += prob_list[idx]
-                        if str(next_word).lower() == "no":
-                            prob_no += prob_list[idx]
-                    if prob_yes > 0 or prob_no > 0:
-                        results.append(prob_yes / (prob_yes + prob_no))
-                        break
-                    else:
-                        top_k_num += 10
-                        print("continue...")
-                    if top_k_num >= 50:
-                        results.append(0)
-                        break
-
-                print(
-                    f"first token: {tokenizer.decode([top_indice[0]])}, desired output = {str(dataset['test'][j]['output']).lower()}, prob = {results[j]}")
+                self.evaluate_one_input(model, results, text, tokenizer)
+                print(f"desired output = {str(dataset['test'][j]['output']).lower()}, prob = {results[j]}")
 
                 if str(dataset["test"][j]['output']).lower() == "yes":
                     real_results.append(1)
                 else:
                     real_results.append(0)
 
+    @staticmethod
+    def evaluate_one_input(model, results, text, tokenizer):
+        inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
+                           return_tensors='pt', return_token_type_ids=False).to(model.device)
+        # output = model(**inputs.to(model.device))
+        # model.generate(**inputs, max_new_token=)
+        output = model.generate(**inputs, max_new_tokens=16, output_logits=True,
+                                return_dict_in_generate=True, output_scores=True)
+        logits = output.logits
+        # output_token_ids = [torch.argmax(t).item() for t in logits]
+        # print(f"====== {tokenizer.decode(output.sequences[0].tolist())}")
+        # print(f"===-----=== {tokenizer.decode(output_token_ids)}")
+        # print(f"l  = {logits}")
+        # print(f"{type(logits)=}")
+        # print(f"keys = {output.keys()}")
+        # print(f"shape = {logits.shape = }")
+        next_word_logits = logits[0]
+        probs = torch.softmax(next_word_logits, dim=-1)
+        # print("----------")
+        prob_yes = 0
+        prob_no = 0
+        top_k_num = 10
+        while True:
+            top_probs, top_indices = torch.topk(probs, top_k_num)
+            prob_list = top_probs[0].tolist()
+            top_indice = top_indices[0].tolist()
+            print(f"top_indices = {top_indices}")
+
+            for idx in range(len(top_indice)):
+                next_word = tokenizer.decode([top_indice[idx]])
+                if str(next_word).lower() == "yes":  # the result might be "Yes", yes", "No", and "no"
+                    prob_yes += prob_list[idx]
+                if str(next_word).lower() == "no":
+                    prob_no += prob_list[idx]
+            if prob_yes > 0 or prob_no > 0:
+                results.append(prob_yes / (prob_yes + prob_no))
+                break
+            else:
+                top_k_num += 10
+                print("continue...")
+            if top_k_num >= 50:
+                results.append(0)
+                break
+        print(f"first token: {tokenizer.decode([top_indice[0]])}")
+
+    def train(self, model, encoded_dataset, batch_size=32, idx=None, tokenizer=None):
+        output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + idx
+        peft_trainer = Trainer(
+            model=model,
+            args=TrainingConfigManager.get_training_config(output_dir=output_dir,
+                                                           task_name=self.task_name, batch_size=batch_size),
+            train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
+            eval_dataset=encoded_dataset["validation"],
+            # tokenizer=tokenizer,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
+            data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
+                                                          response_template=EXPLANATION_RESPONSE_TEMPLATE)
+            # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+        )
+        print(f"EXPLANATION_RESPONSE_TEMPLATE = {EXPLANATION_RESPONSE_TEMPLATE}")
+        peft_trainer.train()
+        model.save_pretrained(output_dir + "-final")
+        return peft_trainer
+
+    @staticmethod
+    def get_tokenizer(model, base_model_name):
+        tokenizer = AutoTokenizer.from_pretrained(FOX, use_fast=False)
+        tokenizer.pad_token = tokenizer.eos_token
+        return tokenizer
+
+    def process(self, desired_total_data_n=None, batch_size=16):
+        t = str(datetime.now())
+        dataset = self.get_training_data(idx=t)
+        model = self.get_pretrained_model()
+        tokenizer = self.get_tokenizer(model, self.base_model_name)
+        encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
+        trainer = self.train(model=model, encoded_dataset=encoded_dataset, batch_size=batch_size, idx=t)
+        self.evaluate(model=trainer.model, dataset=dataset, tokenizer=tokenizer)

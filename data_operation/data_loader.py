@@ -20,6 +20,11 @@ class DataLoader:
     def __init__(self):
         pass
 
+    def load_reasoning_data(self, task_name, dataset_types: list = None, data_num_dict=None):
+        if task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+            task_data = self.get_hybrid_hallucination_data(dataset_types, data_num_dict=data_num_dict)
+            return task_data
+
     def load_data(self, task_name, dataset_types: list = None, data_num_dict=None, desired_total_data_n=None,
                   training_per=0.8, validation_per=0.1, test_per=0.1):
         # None: return full dataset by default
@@ -33,9 +38,6 @@ class DataLoader:
             task_data = self.load_unsafe_prompt_data()
         elif task_name == HALLUCINATION_TASK_NAME:
             task_data = self.load_hallucination_data()
-        elif task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
-            task_data = self.get_hybrid_hallucination_data(dataset_types, data_num_dict=data_num_dict)
-            return task_data
         elif task_name == TOXICITY_TASK_NAME:
             if dataset_types is None:
                 task_data = self.load_toxicity_data()  # default

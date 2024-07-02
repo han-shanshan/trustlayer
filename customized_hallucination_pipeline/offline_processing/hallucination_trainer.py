@@ -44,11 +44,10 @@ class HallucinationTrainingEngine(TrainingEngine):
         tokenizer = self.get_tokenizer(model)
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 
-        config_manager = TrainingConfigManager(model=self.base_model_name)
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config
-        model = get_peft_model(model, config_manager.get_lora_config())
+        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=FOX))
         print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
@@ -56,7 +55,8 @@ class HallucinationTrainingEngine(TrainingEngine):
 
         bert_peft_trainer = Trainer(
             model=model,
-            args=config_manager.get_training_config(output_dir=output_dir, batch_size=8),
+            args=TrainingConfigManager.get_training_config(output_dir=output_dir,
+                                                           task_name=self.task_name, batch_size=8),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             compute_metrics=self.label_metrics,

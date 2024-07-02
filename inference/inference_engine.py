@@ -1,12 +1,13 @@
 import numpy as np
-from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM
+from transformers import AutoModelForSequenceClassification
 from scipy.special import expit as sigmoid
-from data_operation.data_processor import DataProcessor
-from training.training_engine import compute_metrics, get_tokenizer
+# from training.training_engine import compute_metrics, get_tokenizer
 import torch
 import json
 import os
 
+from training.classification_training_engine import compute_metrics
+from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
 from utils.constants import HALLUCINATION_REASONING_PROBLEM_TYPE, MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE, \
     SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE
 
@@ -28,17 +29,15 @@ class InferenceEngine:
         if problem_type not in [SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE,
                                 MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE,
                                 HALLUCINATION_REASONING_PROBLEM_TYPE]:
-            raise Exception(f"Unvalid problem_type: {problem_type}")
+            raise Exception(f"Invalid problem_type: {problem_type}")
         self.problem_type = problem_type
         self.model_name = base_model.split("/")[1]
         if adapter_path is not None:
             model_path = adapter_path
         else:
             model_path = base_model
-
         self.model = self.get_model(model_path=model_path)
-
-        self.tokenizer = get_tokenizer(self.model, base_model_name=base_model)
+        self.tokenizer = HallucinationReasoningTrainingEngine.get_tokenizer(self.model, base_model_name=base_model)
         self.model.to(self.device)
 
     @staticmethod

@@ -9,8 +9,9 @@ class TrainingConfigManager:
         self.model = model
         self.config = config
 
-    def get_training_config(self, output_dir, batch_size=8):
-        if self.task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+    @staticmethod
+    def get_training_config(output_dir, task_name, batch_size=8):
+        if task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=10,  # number of training epochs
@@ -67,8 +68,9 @@ class TrainingConfigManager:
         #     # push_to_hub=True,
         # )
 
-    def get_lora_config(self):
-        if self.model in [MODEL_NAME_TINYLAMMA, FOX]:
+    @staticmethod
+    def get_lora_config(model_name):
+        if model_name in [MODEL_NAME_TINYLAMMA, FOX]:
             return LoraConfig(
                 r=16,
                 lora_alpha=32,
