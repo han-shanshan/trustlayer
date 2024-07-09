@@ -1,12 +1,13 @@
-from data_operation.data_reader import DataReader
+from data_operation.data_file_operator import DataFileOperator
 from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
-from training.training_engine import compute_metrics
 import requests
+
+from training.classification_training_engine import compute_metrics
 
 
 def openai_test(dataset):
     url = "https://api.openai.com/v1/moderations"
-    key = DataReader().read_openai_apikey()
+    key = DataFileOperator().read_openai_apikey()
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"

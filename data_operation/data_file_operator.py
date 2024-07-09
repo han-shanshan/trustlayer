@@ -6,7 +6,7 @@ from datasets import load_dataset
 def read_data_from_txt_file(file_path, retrieved_col_name=""):
     # the txt file only contain values in the knowledge column;
     # the file is created by copying the knowledge column from the original data file
-    raw_data = DataReader.read_data_file(file_path)
+    raw_data = DataFileOperator.read_data_file(file_path)
     data_list = raw_data.split("\"\n\"")
     if len(retrieved_col_name) > 0 and retrieved_col_name.lower() == data_list[0].lower():
         data_list = data_list[1:]
@@ -17,31 +17,27 @@ def read_data_from_txt_file(file_path, retrieved_col_name=""):
     return data_list
 
 
-class DataReader:
+class DataFileOperator:
     def __init__(self):
         pass
 
     def read_hf_apikey(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'huggingface.apikey')
+        file_path = self.get_file_path('..', 'utils', 'api_keys', 'huggingface.apikey')
         return self.read_data_file(file_path)
 
     def read_azure_apikey(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'azure_api.key')
+        file_path = self.get_file_path('..', 'utils', 'api_keys', 'azure_api.key')
         return self.read_data_file(file_path)
 
     def read_openai_apikey(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'openai.key')
+        file_path = self.get_file_path('..', 'utils', 'api_keys', 'openai.key')
         return self.read_data_file(file_path)
 
     def read_google_apikey(self, is_perspective_api=False):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
         if not is_perspective_api:
-            file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'google.apikey')
+            file_path = self.get_file_path('..', 'utils', 'api_keys', 'google.apikey')
         else:
-            file_path = os.path.join(dir_path, '..', 'utils', 'api_keys', 'perspective_api.key')
+            file_path = self.get_file_path('..', 'utils', 'api_keys', 'perspective_api.key')
         return self.read_data_file(file_path)
 
     @staticmethod
@@ -50,9 +46,24 @@ class DataReader:
             content = file.read()
         return content
 
+    def read_dataset_from_csv_file(self, *path_components):
+        """
+        Parameters:
+        *path_components (str): Components of the path to the CSV file.
+
+        Returns:
+        DataFrame: The dataset read from the CSV file.
+        """
+        csv_file_path = self.get_file_path(*path_components)
+        dataset = load_dataset('csv', csv_file_path=csv_file_path)
+        return dataset
+
     @staticmethod
-    def read_csv_file_data(csv_file_path):
-        return load_dataset('csv', data_files=csv_file_path)
+    def get_file_path(*path_components):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        csv_file_path = os.path.join(dir_path, *path_components)
+        print(csv_file_path)
+        return csv_file_path
 
     @staticmethod
     def read_data_from_file(file_path, retrieved_col_name="all"):  # "all": retrieve all column

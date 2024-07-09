@@ -1,5 +1,5 @@
 from transformers import pipeline
-from data_operation.data_reader import DataReader
+from data_operation.data_file_operator import DataFileOperator
 import torch
 from utils.constants import FOX
 
@@ -24,7 +24,7 @@ class ExperimentModelLoader:
 
     def load_model(self):
         if self.model_name == MISTRAL7B_MODEL:
-            hf_key = DataReader().read_hf_apikey()
+            hf_key = DataFileOperator().read_hf_apikey()
             print(hf_key)
             return pipeline("text-generation", model="mistralai/Mistral-7B-Instruct-v0.2", return_full_text=False,
                             token=hf_key, max_new_tokens=1024, device=3)
@@ -38,11 +38,11 @@ class ExperimentModelLoader:
             return pipeline("text-generation", max_new_tokens=1024, model=FOX, return_full_text=False,
                             device=5)
         if self.model_name == LLAMA3_8B_MODEL:
-            hf_key = DataReader().read_hf_apikey()
+            hf_key = DataFileOperator().read_hf_apikey()
             return pipeline("text-generation", model="meta-llama/Meta-Llama-3-8B-Instruct", token=hf_key,
                             return_full_text=False, max_new_tokens=1024, device=6)
         if self.model_name == LLAMA2_7B_MODEL:
-            hf_key = DataReader().read_hf_apikey()
+            hf_key = DataFileOperator().read_hf_apikey()
             return pipeline("text-generation", model="meta-llama/Llama-2-7b-chat-hf", token=hf_key,
                             return_full_text=False, max_new_tokens=1024, device=7)
 
