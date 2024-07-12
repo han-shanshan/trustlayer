@@ -97,8 +97,9 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
                         break
 
                 else:
-                    input_ids = batch['labels'][i][batch['attention_mask'][i] > 0].tolist()
-
+                    input_ids = batch['input_ids'][i][batch['attention_mask'][i] > 0].tolist()
+                    # print(f"input_ids type = {type(input_ids)}, len = {len(input_ids)}, first element = {input_ids[0]}, type of first = {type(input_ids[0])}")
+                    # print(f"input ids = {input_ids}")
                     warnings.warn(
                         f"{type(self).__name__} Could not find response key `{self.response_template}` in the"
                         f" following instance: ```{self.tokenizer.decode(input_ids)}```"
@@ -152,6 +153,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         return model
 
     def get_encoded_dataset(self, dataset, tokenizer):
+        print(f"before enocding = {dataset}")
         def tokenize_function(examples):
             inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
                                return_tensors='pt')
@@ -160,7 +162,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         # dataset.cleanup_cache_files()
         encoded_dataset = dataset.map(tokenize_function, batched=True, remove_columns=dataset["train"].column_names)
         encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
-        print(encoded_dataset)
+        print(f"encoded_dataset = {encoded_dataset}")
         return encoded_dataset
 
     def evaluate(self, model=None, dataset=None, tokenizer=None):
@@ -241,7 +243,6 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                                                           response_template=EXPLANATION_RESPONSE_TEMPLATE)
             # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
         )
-        print(f"EXPLANATION_RESPONSE_TEMPLATE = {EXPLANATION_RESPONSE_TEMPLATE}")
         peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
         return peft_trainer
