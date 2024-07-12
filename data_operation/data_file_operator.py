@@ -59,7 +59,7 @@ class FileOperator:
         DataFrame: The dataset read from the CSV file.
         """
         csv_file_path = self.get_file_path(*path_components)
-        dataset = load_dataset('csv', data_files=csv_file_path)
+        dataset = load_dataset('csv', data_files=csv_file_path, trust_remote_code=True)
         return dataset
 
     @staticmethod
@@ -87,7 +87,7 @@ class FileOperator:
                 if f.endswith('.csv'):
                     csv_file_path = self.get_file_path(folder_path, f)
                     split = f.split(".")[0]
-                    sub_dataset = load_dataset('csv', data_files=csv_file_path)
+                    sub_dataset = load_dataset('csv', data_files=csv_file_path, trust_remote_code=True)
                     dataset[split] = sub_dataset['train']
         print(f"dataset = {dataset}")
         return dataset
