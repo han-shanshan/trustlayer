@@ -5,9 +5,8 @@ from utils.openai_agent import OpenAIAgent
 
 
 class ReasoningDataLoader(DataLoader):
-    def __init__(self, tokenizer=None, agent_type="fedml"):
+    def __init__(self, tokenizer=None):
         super().__init__()
-        self.openai_agent = OpenAIAgent(agent_type=agent_type)
         self.tokenizer = tokenizer
 
     def load_reasoning_data(self, dataset_types: list = None, data_num_dict=None, base_model=FOX_INSTRUCT):

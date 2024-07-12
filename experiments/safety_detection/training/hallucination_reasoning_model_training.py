@@ -22,7 +22,7 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    # run_id = wandb.init(project=f"{TASK_NAME} with FOX")
+    run_id = wandb.init(project=f"{TASK_NAME} with FOX")
     torch.cuda.empty_cache()
     dataset_types = [
         # "rag-hallucination1000", # 1000 in total
