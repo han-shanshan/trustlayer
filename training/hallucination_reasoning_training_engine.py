@@ -9,7 +9,7 @@ from data_operation.reasoning_data_loader import ReasoningDataLoader
 from training.classification_training_engine import CustomCallback
 from training.training_config_manager import TrainingConfigManager
 from training.training_engine import TrainingEngine
-from utils.constants import FOX_INSTRUCT, EXPLANATION_RESPONSE_TEMPLATE, HALLUCINATION_REASONING_TASK
+from utils.constants import FOX_INSTRUCT, FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE
 from data_operation.data_processor import DataProcessor
 import evaluate
 from datetime import datetime
@@ -240,7 +240,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
             # tokenizer=tokenizer,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
             data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
-                                                          response_template=EXPLANATION_RESPONSE_TEMPLATE)
+                                                          response_template=FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE)
             # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
         )
         peft_trainer.train()

@@ -1,7 +1,6 @@
 from datasets import DatasetDict
 from data_operation.data_loader import DataLoader
-from utils.constants import FOX_INSTRUCT, EXPLANATION_RESPONSE_TEMPLATE
-from utils.openai_agent import OpenAIAgent
+from utils.constants import FOX_INSTRUCT, FOX_BASE_REASONING_RESPONSE_TEMPLATE
 
 
 class ReasoningDataLoader(DataLoader):
@@ -98,7 +97,7 @@ class ReasoningDataLoader(DataLoader):
     @staticmethod
     def get_hallu_reasoning_prompt_for_fox_base(input_infor, output):
         return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> According to the Question and the Knowledge, " \
-               f"is there any hallucination in the LLM Answer?  {input_infor}. {EXPLANATION_RESPONSE_TEMPLATE}[" \
+               f"is there any hallucination in the LLM Answer?  {input_infor}. {FOX_BASE_REASONING_RESPONSE_TEMPLATE}[" \
                f"/INST] {output}. "
 
     def get_hallu_reasoning_prompt_for_fox_instruct(self, input_infor, is_hallucination, reason):

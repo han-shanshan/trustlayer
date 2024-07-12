@@ -14,7 +14,8 @@ MODEL_NAME_TINYLAMMA = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 FOX_INSTRUCT = "tensoropera/Fox-1-1.6B-Instruct-v0.1"
 FOX_BASE = "tensoropera/Fox-1-1.6B"
 
-EXPLANATION_RESPONSE_TEMPLATE = "### Response:"
+FOX_BASE_REASONING_RESPONSE_TEMPLATE = "### Response:"
+FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE = "<|assistant|>\n"
 
 ###############
 SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE = "single_label_classification"
