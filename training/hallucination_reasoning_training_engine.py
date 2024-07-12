@@ -33,7 +33,7 @@ roc_auc_metric = evaluate.load("roc_auc")
 #
 # valid_token_ids = [id1, id2, id3, id4]
 
-
+# Adapted from https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/trl/trainer/utils.py#L56
 class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
     def __init__(
             self,
