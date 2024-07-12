@@ -1,32 +1,39 @@
 from data_operation.data_loader import DataLoader
+from data_operation.reasoning_data_preparer import ReasoningDataPreparer
 from inference.reasoning_inference_engine import ReasoningInferenceEngine
-from utils.constants import FOX, HALLUCINATION_EXPLANATION_TASK_NAME
+from utils.constants import FOX_INSTRUCT, HALLUCINATION_REASONING_TASK
 from inference.inference_engine import InferenceEngine
 import os
-from datasets import load_dataset
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7'
 
-TASK_NAME = HALLUCINATION_EXPLANATION_TASK_NAME
-MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
+TASK_NAME = HALLUCINATION_REASONING_TASK
+MODEL_NAME = FOX_INSTRUCT
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections
 """
 
+# construct_input_output_pairs_for_hallu_detection(self, question, knowledge, llm_answer, log_type,
+#                                                          is_hallucination):
+# get_input_information(knowledge, llm_answer, log_type, question)
+
 if __name__ == '__main__':
-    input_output_pair = DataLoader().construct_input_output_pairs_for_hall_detection(
+    input_information = ReasoningDataPreparer().get_input_information(
         question="[Human]: Do you like Iron Man [Assistant]: Sure do! Robert Downey Jr. is a favorite. [Human]: Yes i "
                  "like him too did you know he also was in Zodiac a crime fiction film.",
         knowledge="Iron Man is starring Robert Downey Jr.Robert Downey Jr. starred in Zodiac (Crime Fiction "
                   "Film)Zodiac (Crime Fiction Film) is starring Jake Gyllenhaal",
-        llm_answer="I'm not a fan of crime movies, but I did know that RDJ starred in Zodiac with Tom Hanks.",
-        output=""  #Yes  # "No, the answer can be deduced from the context. "
+        log_type="dialogue",
+        llm_answer="I'm not a fan of crime movies, but I did know that RDJ starred in Zodiac with Tom Hanks."
+        # output=""  #Yes  # "No, the answer can be deduced from the context. "
     )
-    text = DataLoader().get_llama_prompt_for_hallucination_reasoning_task(input_output_pair["input"],
-                                                                          input_output_pair["output"])
-    print(text)
-    inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX,
-                                                adapter_path="./fox_adapters/Fox-1-1.6B-hallucination_explanation"
-                                                             "-2024-06-25 17:25:08.253047-final")
-    print(inference_engine.inference(text))
+    # text = DataLoader().get_llama_prompt_for_hallucination_reasoning_task(input_output_pair["input"],
+    #                                                                       input_output_pair["output"])
+    print(input_information)
+    inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX_INSTRUCT,
+                                                adapter_path="./fox_adapters/Fox-Instruct-hallucination_reasoning")
+
+    prompt = inference_engine.get_hallu_reasoning_prompt_for_fox_instruct(input_information)
+    print("=============")
+    print(inference_engine.inference(prompt))

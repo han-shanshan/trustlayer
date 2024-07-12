@@ -1,5 +1,3 @@
-import os
-import time
 from datasets import concatenate_datasets, load_dataset
 from data_operation.data_file_operator import FileOperator
 from utils.file_operations import write_hf_dataset_to_csv
@@ -14,6 +12,16 @@ class ReasoningDataPreparer:
     def construct_input_output_pairs_for_hallu_detection(self, question, knowledge, llm_answer, log_type,
                                                          is_hallucination):
         # todo: change qa_openai -- LLM answer->LLM response
+        information_input = self.get_input_information(knowledge, llm_answer, log_type, question)
+        if is_hallucination:
+            detection_result = "Yes"
+            reason = self.get_reason_for_hallucination_with_GPT(is_hallucination=is_hallucination, input=information_input)
+        else:
+            detection_result = "No"
+            reason = ""
+        return {"input": information_input, "is_hallucination": detection_result, "reason": reason}
+
+    def get_input_information(self, knowledge, llm_answer, log_type, question):
         if log_type not in ["qa", "dialogue", "summarization"]:
             raise ValueError(f"unsupported log type: {log_type}")
         knowledge_template = "Knowledge"
@@ -25,13 +33,7 @@ class ReasoningDataPreparer:
             question_template = "Question"
             knowledge_template = "Document"
         information_input = f"{question_template}: {question}\n{knowledge_template}: {knowledge}\nLLM response: {llm_answer}"
-        if is_hallucination:
-            detection_result = "Yes"
-            reason = self.get_reason_for_hallucination_with_GPT(is_hallucination=is_hallucination, input=information_input)
-        else:
-            detection_result = "No"
-            reason = ""
-        return {"input": information_input, "is_hallucination": detection_result, "reason": reason}
+        return information_input
 
     @staticmethod
     def _get_GPT_prompt_for_halu_reasoning(is_hallucination, input):
@@ -97,10 +99,3 @@ class ReasoningDataPreparer:
                                                                                    dataset_name,
                                                                                    subset_name + "_shuffled.csv"))
         return dataset
-
-if __name__ == '__main__':
-    # agent = ReasoningDataPreparer(agent_type="openai")
-    # agent.process_reasoning_data_for_hallucination("HaluEval-qa", start_idx=9400)
-    agent = ReasoningDataPreparer(agent_type="fedml")
-    agent.process_reasoning_data_for_hallucination("HaluEval-dialogue", start_idx=200)
-    # agent.process_reasoning_data_for_hallucination("HaluEval-summarization", start_idx=800)

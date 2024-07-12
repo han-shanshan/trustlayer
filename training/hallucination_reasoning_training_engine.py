@@ -133,9 +133,20 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                 self.data_num_dict = None
 
     def get_training_data(self, idx=None, tokenizer=None):
-        return ReasoningDataLoader(tokenizer=tokenizer).load_reasoning_data(dataset_types=self.dataset_types,
-                                                                            data_num_dict=self.data_num_dict,
-                                                                            base_model=self.base_model_name)
+        data_loader = ReasoningDataLoader(tokenizer=tokenizer)
+        training_dataset, validation_dataset, test_dataset = data_loader.load_hallucination_data_for_reasoning(
+            self.data_num_dict, self.dataset_types)
+        if self.base_model_name == FOX_INSTRUCT:
+            task_data = data_loader.get_hallu_reasoning_data_for_fox_instruct(training_dataset,
+                                                                              validation_dataset,
+                                                                              test_dataset)
+        else:
+            task_data = data_loader.get_hybrid_hallucination_data_for_fox_base(training_dataset,
+                                                                               validation_dataset,
+                                                                               test_dataset)
+        print(f"task data = {task_data}")
+        print(f"sample data = {task_data['train'][0]}")
+        return task_data
 
     def get_pretrained_model(self):
         model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
@@ -154,6 +165,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
 
     def get_encoded_dataset(self, dataset, tokenizer):
         print(f"before enocding = {dataset}")
+
         def tokenize_function(examples):
             inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
                                return_tensors='pt')

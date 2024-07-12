@@ -53,7 +53,8 @@ class InferenceEngine:
         return AutoModelForSequenceClassification.from_pretrained(model_path,
                                                                   problem_type=self.problem_type,
                                                                   num_labels=len(self.config[self.task_name]),
-                                                                  id2label=self.config[self.task_name])
+                                                                  id2label=self.config[self.task_name],
+                                                                  trust_remote_code=True)
 
     """
     https://huggingface.co/docs/peft/en/quicktour

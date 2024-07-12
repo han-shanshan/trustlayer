@@ -8,21 +8,6 @@ class ReasoningDataLoader(DataLoader):
         super().__init__()
         self.tokenizer = tokenizer
 
-    def load_reasoning_data(self, dataset_types: list = None, data_num_dict=None, base_model=FOX_INSTRUCT):
-        training_dataset, validation_dataset, test_dataset = self.load_hallucination_data_for_reasoning(
-            data_num_dict, dataset_types)
-        if base_model == FOX_INSTRUCT:
-            task_data = self.get_hallu_reasoning_data_for_fox_instruct(training_dataset,
-                                                                       validation_dataset,
-                                                                       test_dataset)
-        else:
-            task_data = self.get_hybrid_hallucination_data_for_fox_base(training_dataset,
-                                                                        validation_dataset,
-                                                                        test_dataset)
-        print(f"task data = {task_data}")
-        print(f"sample data = {task_data['train'][0]}")
-        return task_data
-
     def get_hallu_reasoning_data_for_fox_instruct(self, training_dataset, validation_dataset, test_dataset):
         print(f"training_dataset = {training_dataset}")
         training_dataset = training_dataset.map(lambda example: {
@@ -113,7 +98,7 @@ class ReasoningDataLoader(DataLoader):
             },
             {
                 "role": "assistant",
-                "content": f"{is_hallucination} {reason}",
+                "content": f"{is_hallucination}. {reason}",
             },
         ]
         prompt = self.tokenizer.apply_chat_template(
