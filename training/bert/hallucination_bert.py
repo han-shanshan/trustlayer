@@ -1,4 +1,4 @@
-from utils.constants import HALLUCINATION_TASK_NAME, MODEL_NAME_BERT_BASE
+from utils.constants import HALLUCINATION_TASK, MODEL_NAME_BERT_BASE
 from inference.inference_engine import InferenceEngine
 import os
 import torch
@@ -9,7 +9,7 @@ if device.type == 'cuda':
     os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
 
-TASK_NAME = HALLUCINATION_TASK_NAME
+TASK_NAME = HALLUCINATION_TASK
 MODEL_NAME = MODEL_NAME_BERT_BASE  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

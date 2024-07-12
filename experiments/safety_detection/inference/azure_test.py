@@ -1,16 +1,15 @@
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
-from training.training_engine import compute_metrics
 from azure.ai.contentsafety import ContentSafetyClient
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
 # pip install azure-ai-contentsafety
+from training.classification_training_engine import compute_metrics
 
 
 def azure_test(dataset):
-    import time
-    key = DataFileOperator().read_azure_apikey()
+    key = FileOperator().read_azure_apikey()
     end_point = "https://test-for-trustlayer.cognitiveservices.azure.com/"
 
     client = ContentSafetyClient(end_point, AzureKeyCredential(key))  # Create an Azure AI Content Safety client

@@ -1,7 +1,7 @@
 from datasets import load_dataset
 from typing import List, Optional
 from data_operation.data_operator import DataOperator
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 from transformers import pipeline
 from utils.file_operations import write_a_list_to_csv_with_panda
 
@@ -127,7 +127,7 @@ def exp_searching(dataset_id, total_query_num=50, store_path="", is_rephrasing_q
     plaintext_knowledge_file_name = storage_prefix + "_knowledge_data.csv"
     question_file_name = f"{storage_prefix}_supplementary_data.csv"
 
-    df = DataFileOperator.read_data_from_file(question_file_name)
+    df = FileOperator.read_data_from_file(question_file_name)
     col_name = df.columns[0]
     original_queries = df.sample(n=total_query_num, random_state=RANDOM_SEED)
     # print(f"queries = {queries}")

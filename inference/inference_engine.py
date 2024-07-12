@@ -7,8 +7,8 @@ import json
 import os
 from training.classification_training_engine import compute_metrics
 from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
-from utils.constants import HALLUCINATION_REASONING_PROBLEM_TYPE, MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE, \
-    SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE
+from utils.constants import MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE, SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE, \
+    HALLUCINATION_REASONING_TASK
 
 """
 Reference code: 
@@ -27,7 +27,7 @@ class InferenceEngine:
         print(f"config = {self.config}")
         if problem_type not in [SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE,
                                 MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE,
-                                HALLUCINATION_REASONING_PROBLEM_TYPE]:
+                                HALLUCINATION_REASONING_TASK]:
             raise Exception(f"Invalid problem_type: {problem_type}")
         self.problem_type = problem_type
         self.model_name = base_model.split("/")[1]

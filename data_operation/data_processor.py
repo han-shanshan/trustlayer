@@ -1,8 +1,8 @@
 import numpy as np
 from datasets import concatenate_datasets, DatasetDict
-from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
-    HALLUCINATION_EXPLANATION_TASK_NAME
+from utils.constants import TOPIC_TASK, SEMANTIC_TASK, GIBBERISH_TASK, UNSAFE_PROMPT_TASK, \
+    HALLUCINATION_TASK, TOXICITY_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK, \
+    HALLUCINATION_REASONING_TASK
 from data_operation.data_loader import DataLoader
 
 
@@ -22,43 +22,43 @@ class DataProcessor:
         self.task_name = task_name
 
     def get_phase_names(self):
-        if self.task_name is TOPIC_TASK_NAME:
+        if self.task_name is TOPIC_TASK:
             return "train_2020", "test_2020", "validation_2020"
-        elif self.task_name in [SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME,
-                                HALLUCINATION_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        elif self.task_name in [SEMANTIC_TASK, GIBBERISH_TASK, UNSAFE_PROMPT_TASK,
+                                HALLUCINATION_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             return "train", "test", "validation"
         else:
             Exception("wrong task name")
 
     def get_remove_column_names(self, dataset):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK, UNSAFE_PROMPT_TASK, TOXICITY_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             return "text"
         train_phase_name, _, _ = self.get_phase_names()
-        if self.task_name is HALLUCINATION_TASK_NAME:
+        if self.task_name is HALLUCINATION_TASK:
             hallucination_columns = dataset[train_phase_name].column_names
             hallucination_columns.remove("label")
             return hallucination_columns
         return dataset[train_phase_name].column_names
 
     def prepare_label_dict_for_a_task(self, dataset):
-        if self.task_name is SEMANTIC_TASK_NAME:
+        if self.task_name is SEMANTIC_TASK:
             return [label_name for label_name in dataset['train'].features.keys() if label_name not in ['ID', 'Tweet']]
-        elif self.task_name is GIBBERISH_TASK_NAME:
+        elif self.task_name is GIBBERISH_TASK:
             """labels: noise, word salad, clean; reference: https://huggingface.co/madhurjindal/autonlp-Gibberish-Detector-492513457
             """
             return ['clean', 'noise', 'word salad']
-        elif self.task_name in [UNSAFE_PROMPT_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        elif self.task_name in [UNSAFE_PROMPT_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             return ['safe', 'unsafe']
-        elif self.task_name is HALLUCINATION_TASK_NAME:
+        elif self.task_name is HALLUCINATION_TASK:
             return ['valid', 'hallucination', 'irrelevant']
-        elif self.task_name is TOXICITY_TASK_NAME:
+        elif self.task_name is TOXICITY_TASK:
             label_names_to_predict = ['toxicity', 'severe_toxicity', 'obscene', 'sexual_explicit',
                                       'identity_attack', 'insult', 'threat', 'toxicity_annotator_count']
             if all(value in dataset["train"].column_names for value in label_names_to_predict):
                 return label_names_to_predict
             else:
                 return ['non-toxic', 'toxic']
-        elif self.task_name is TOPIC_TASK_NAME:  # todo: check the dataset in details
+        elif self.task_name is TOPIC_TASK:  # todo: check the dataset in details
             """ 
             DatasetDict({
                 test_2020: Dataset({ features: ['text', 'date', 'label', 'label_name', 'id'], num_rows: 573})
@@ -82,16 +82,16 @@ class DataProcessor:
             return list(label_names)
 
     def encoding(self, dataset):
-        if self.task_name is SEMANTIC_TASK_NAME:
+        if self.task_name is SEMANTIC_TASK:
             return dataset.map(self.process_semantics_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
-        elif self.task_name is TOPIC_TASK_NAME:
+        elif self.task_name is TOPIC_TASK:
             return dataset.map(self.process_topic_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
-        elif self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        elif self.task_name in [GIBBERISH_TASK, UNSAFE_PROMPT_TASK, TOXICITY_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             return dataset.map(self.process_single_label_classification_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
-        elif self.task_name is HALLUCINATION_TASK_NAME:
+        elif self.task_name is HALLUCINATION_TASK:
             return dataset.map(self.process_hallucination_data, batched=True,
                                remove_columns=self.get_remove_column_names(dataset))
 
@@ -100,7 +100,7 @@ class DataProcessor:
         dataset = DataLoader().load_data(task_name=self.task_name, dataset_types=dataset_types,
                                          data_num_dict=data_num_dict, desired_total_data_n=desired_total_data_n,
                                          training_per=training_per, validation_per=validation_per, test_per=test_per)
-        if self.task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+        if self.task_name == HALLUCINATION_REASONING_TASK:
             return dataset, None, None, None
         label_names = self.prepare_label_dict_for_a_task(dataset)
         print(f"label names = {label_names}")
@@ -117,7 +117,7 @@ class DataProcessor:
     def process_encoded_datasets(self, dataset, tokenizer):
         self.tokenizer = tokenizer
         encoded_dataset = self.encoding(dataset)
-        if self.task_name == TOPIC_TASK_NAME:  # todo: move to data loader
+        if self.task_name == TOPIC_TASK:  # todo: move to data loader
             encoded_dataset = self.concatenate_dataset_of_same_phase(encoded_dataset)
         final_dataset = DatasetDict(encoded_dataset)
         final_dataset.set_format("torch")

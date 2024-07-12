@@ -2,7 +2,7 @@ import pandas as pd
 from datasets import load_dataset, concatenate_datasets
 from transformers import pipeline
 import re
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 from data_operation.vector_db_operator import VectorDBOperator
 from typing import List, Optional
 from utils.file_operations import write_a_dictionary_to_file, write_a_list_to_csv_with_panda, load_a_dictionary_from_file
@@ -200,7 +200,7 @@ class DataOperator:
         if index is None:
             raise Exception(f"index is {index}")
         results = self.vector_db_operator.search_vectors(text, index, k)
-        df = DataFileOperator.read_data_from_file(plaintext_file_path)
+        df = FileOperator.read_data_from_file(plaintext_file_path)
         # join by: df1.ann == data.index
         results = pd.merge(results, df, left_on='ann', right_index=True)
         return results

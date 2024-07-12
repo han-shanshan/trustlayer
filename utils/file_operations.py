@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import os
+from data_operation.data_file_operator import FileOperator
 
 
 def write_a_list_to_file(file_name, array: list):
@@ -31,6 +32,13 @@ def write_a_list_to_csv_with_panda(data, file_path):
         data.to_csv(file_path, index=False)
 
 
-def write_hf_dataset_to_csv(dataset_to_store, csv_file_path):
+def write_hf_dataset_to_csv(dataset_to_store, csv_file_path, is_append_mode=False):
+    FileOperator.create_a_folder(os.path.dirname(csv_file_path))
     df = pd.DataFrame(dataset_to_store)
-    df.to_csv(csv_file_path, index=False)
+    header = True
+    if os.path.exists(csv_file_path):
+        header = False
+    if is_append_mode:
+        df.to_csv(csv_file_path, index=False, header=header, mode='a')
+    else:
+        df.to_csv(csv_file_path, index=False, header=header)

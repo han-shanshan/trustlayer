@@ -1,4 +1,4 @@
-from utils.constants import TOPIC_TASK_NAME, MODEL_NAME_BERT_BASE
+from utils.constants import TOPIC_TASK, MODEL_NAME_BERT_BASE
 from inference.inference_engine import InferenceEngine
 import os
 
@@ -11,5 +11,5 @@ if __name__ == '__main__':
     # trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TOPIC_TASK_NAME)
     # trainer.train()
     text = "i'm happy hahaha"
-    inference_engine = InferenceEngine(task_name=TOPIC_TASK_NAME)
+    inference_engine = InferenceEngine(task_name=TOPIC_TASK)
     print(inference_engine.inference(text))

@@ -1,6 +1,6 @@
 from peft import LoraConfig, TaskType
 from transformers import TrainingArguments
-from utils.constants import HALLUCINATION_EXPLANATION_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX
+from utils.constants import HALLUCINATION_REASONING_TASK, MODEL_NAME_TINYLAMMA, FOX_INSTRUCT
 
 
 class TrainingConfigManager:
@@ -11,7 +11,7 @@ class TrainingConfigManager:
 
     @staticmethod
     def get_training_config(output_dir, task_name, batch_size=8):
-        if task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
+        if task_name == HALLUCINATION_REASONING_TASK:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=10,  # number of training epochs
@@ -70,7 +70,7 @@ class TrainingConfigManager:
 
     @staticmethod
     def get_lora_config(model_name):
-        if model_name in [MODEL_NAME_TINYLAMMA, FOX]:
+        if model_name in [MODEL_NAME_TINYLAMMA, FOX_INSTRUCT]:
             return LoraConfig(
                 r=16,
                 lora_alpha=32,

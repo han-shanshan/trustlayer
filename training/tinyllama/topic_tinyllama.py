@@ -1,10 +1,10 @@
-from utils.constants import MODEL_NAME_TINYLAMMA, TOPIC_TASK_NAME
+from utils.constants import MODEL_NAME_TINYLAMMA, TOPIC_TASK
 from training.training_engine import TrainingEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
-TASK_NAME = TOPIC_TASK_NAME
+TASK_NAME = TOPIC_TASK
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

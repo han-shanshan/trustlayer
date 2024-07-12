@@ -1,10 +1,10 @@
-from utils.constants import MODEL_NAME_TINYLAMMA, HALLUCINATION_TASK_NAME
+from utils.constants import MODEL_NAME_TINYLAMMA, HALLUCINATION_TASK
 from inference.inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
-TASK_NAME = HALLUCINATION_TASK_NAME
+TASK_NAME = HALLUCINATION_TASK
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

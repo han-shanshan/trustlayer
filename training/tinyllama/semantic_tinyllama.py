@@ -1,10 +1,10 @@
-from utils.constants import SEMANTIC_TASK_NAME, MODEL_NAME_TINYLAMMA
+from utils.constants import SEMANTIC_TASK, MODEL_NAME_TINYLAMMA
 from training.training_engine import TrainingEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
-TASK_NAME = SEMANTIC_TASK_NAME
+TASK_NAME = SEMANTIC_TASK
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

@@ -5,14 +5,13 @@ from transformers import AutoTokenizer, EarlyStoppingCallback, AutoModelForCausa
 from transformers import Trainer
 from peft import get_peft_model
 import torch
-from data_operation.data_loader import DataLoader
+from data_operation.reasoning_data_loader import ReasoningDataLoader
 from training.classification_training_engine import CustomCallback
 from training.training_config_manager import TrainingConfigManager
 from training.training_engine import TrainingEngine
-from utils.constants import FOX, EXPLANATION_RESPONSE_TEMPLATE, HALLUCINATION_EXPLANATION_TASK_NAME
+from utils.constants import FOX_INSTRUCT, EXPLANATION_RESPONSE_TEMPLATE, HALLUCINATION_REASONING_TASK
 from data_operation.data_processor import DataProcessor
 import evaluate
-from utils.file_operations import write_hf_dataset_to_csv
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -132,15 +131,10 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
             else:
                 self.data_num_dict = None
 
-    def get_training_data(self, idx=None):
-        dataset = DataLoader().load_reasoning_data(task_name=self.task_name, dataset_types=self.dataset_types,
-                                                   data_num_dict=self.data_num_dict)
-        write_hf_dataset_to_csv(dataset['train'], f"{self.task_name}_train_data_{idx}.csv")
-        write_hf_dataset_to_csv(dataset['validation'], f"{self.task_name}_validation_data_{idx}.csv")
-        print(f"dataset in training: {dataset}")
-        print(f"sample data = {dataset['train'][0]}")
-        write_hf_dataset_to_csv(dataset['test'], f"{self.task_name}_test_data_{idx}.csv")
-        return dataset
+    def get_training_data(self, idx=None, tokenizer=None):
+        return ReasoningDataLoader(tokenizer=tokenizer).load_reasoning_data(dataset_types=self.dataset_types,
+                                                                            data_num_dict=self.data_num_dict,
+                                                                            base_model=self.base_model_name)
 
     def get_pretrained_model(self):
         model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
@@ -154,7 +148,6 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
 
         model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=self.base_model_name))
         model.print_trainable_parameters()  # see % trainable parameters
-        
 
         return model
 
@@ -239,7 +232,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         peft_trainer = Trainer(
             model=model,
             args=TrainingConfigManager.get_training_config(output_dir=output_dir,
-            task_name=self.task_name, batch_size=batch_size),
+                                                           task_name=self.task_name, batch_size=batch_size),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
             # tokenizer=tokenizer,
@@ -255,16 +248,17 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
 
     @staticmethod
     def get_tokenizer(model, base_model_name):
-        tokenizer = AutoTokenizer.from_pretrained(FOX, use_fast=False)
+        tokenizer = AutoTokenizer.from_pretrained(FOX_INSTRUCT, use_fast=False)
         tokenizer.pad_token = tokenizer.eos_token
         return tokenizer
 
     def process(self, batch_size=16):
         t = str(datetime.now())
-        dataset = self.get_training_data(idx=t)
         model = self.get_pretrained_model()
         tokenizer = self.get_tokenizer(model, self.base_model_name)
         model.resize_token_embeddings(len(tokenizer))
+        dataset = self.get_training_data(idx=t, tokenizer=tokenizer)
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
-        trainer = self.train(model=model, encoded_dataset=encoded_dataset, batch_size=batch_size, tokenizer=tokenizer, idx=t)
+        trainer = self.train(model=model, encoded_dataset=encoded_dataset,
+                             batch_size=batch_size, tokenizer=tokenizer, idx=t)
         self.evaluate(model=trainer.model, dataset=dataset, tokenizer=tokenizer)

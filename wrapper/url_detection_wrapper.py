@@ -1,5 +1,5 @@
 import logging
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 from wrapper.wrapper_base import BaseWrapper
 import re
 from requests.exceptions import HTTPError, Timeout, RequestException
@@ -123,7 +123,7 @@ def is_phishing_url_with_phishtank(url):  # the API is not working currently
 class URLDetectionWrapper(BaseWrapper):
     def __init__(self, config):
         super().__init__(config)
-        self.api_key = DataFileOperator().read_google_apikey()
+        self.api_key = FileOperator().read_google_apikey()
 
     def is_phishing_url_with_google_safe_browsing(self, url):
         # e.g., http://malware.testing.google.test/testing/malware/', http://ianfette.org

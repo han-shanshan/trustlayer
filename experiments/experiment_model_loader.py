@@ -1,7 +1,7 @@
 from transformers import pipeline
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 import torch
-from utils.constants import FOX
+from utils.constants import FOX_INSTRUCT
 
 TINYLLAMA_MODEL = "tinyllama"
 MISTRAL7B_MODEL = "mistral-7b"
@@ -24,7 +24,7 @@ class ExperimentModelLoader:
 
     def load_model(self):
         if self.model_name == MISTRAL7B_MODEL:
-            hf_key = DataFileOperator().read_hf_apikey()
+            hf_key = FileOperator().read_hf_apikey()
             print(hf_key)
             return pipeline("text-generation", model="mistralai/Mistral-7B-Instruct-v0.2", return_full_text=False,
                             token=hf_key, max_new_tokens=1024, device=3)
@@ -35,14 +35,14 @@ class ExperimentModelLoader:
             return pipeline("text-generation", model="tiiuae/falcon-40b-instruct", return_full_text=False,
                             torch_dtype=torch.bfloat16, max_new_tokens=1024, device_map="auto", trust_remote_code=True)
         if self.model_name == FOX_MODEL:
-            return pipeline("text-generation", max_new_tokens=1024, model=FOX, return_full_text=False,
+            return pipeline("text-generation", max_new_tokens=1024, model=FOX_INSTRUCT, return_full_text=False,
                             device=5)
         if self.model_name == LLAMA3_8B_MODEL:
-            hf_key = DataFileOperator().read_hf_apikey()
+            hf_key = FileOperator().read_hf_apikey()
             return pipeline("text-generation", model="meta-llama/Meta-Llama-3-8B-Instruct", token=hf_key,
                             return_full_text=False, max_new_tokens=1024, device=6)
         if self.model_name == LLAMA2_7B_MODEL:
-            hf_key = DataFileOperator().read_hf_apikey()
+            hf_key = FileOperator().read_hf_apikey()
             return pipeline("text-generation", model="meta-llama/Llama-2-7b-chat-hf", token=hf_key,
                             return_full_text=False, max_new_tokens=1024, device=7)
 

@@ -2,12 +2,12 @@ import os
 from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
 import torch
 import json
-from utils.constants import HALLUCINATION_EXPLANATION_TASK_NAME, FOX
+from utils.constants import HALLUCINATION_REASONING_TASK, FOX_INSTRUCT
 import wandb
 from datasets import load_dataset
 
-TASK_NAME = HALLUCINATION_EXPLANATION_TASK_NAME
-MODEL_NAME = FOX
+TASK_NAME = HALLUCINATION_REASONING_TASK
+MODEL_NAME = FOX_INSTRUCT
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections
@@ -22,14 +22,14 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    run_id = wandb.init(project=f"{TASK_NAME} with FOX")
+    # run_id = wandb.init(project=f"{TASK_NAME} with FOX")
     torch.cuda.empty_cache()
     dataset_types = [
         # "rag-hallucination1000", # 1000 in total
-        "HaluEval"
+        "HaluEval-qa"
     ]
     data_num_dict = {
-        "HaluEval": {"train": 8000, "validation": 1500, "test": 500},
+        "HaluEval-qa": {"train": 8000, "validation": 1500, "test": 500},
         # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
     }
 

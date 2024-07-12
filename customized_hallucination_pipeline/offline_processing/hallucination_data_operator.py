@@ -1,7 +1,7 @@
 from transformers import pipeline
 import re
 from data_operation.data_operator import DataOperator
-from data_operation.data_file_operator import DataFileOperator
+from data_operation.data_file_operator import FileOperator
 from utils.translator import Translator
 from typing import List, Optional
 
@@ -32,7 +32,7 @@ class HallucinationDataOperator(DataOperator):
 
     def _load_knowledge_dataset(self, dataset_name=None):
         data_file_path = "data/hallucination_cases.xlsx"
-        return DataFileOperator.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
+        return FileOperator.read_data_from_file(data_file_path, retrieved_col_name="knowledge")
 
     def create_knowledge_db(self, dataset_id=None, store_path="", knowledge_col: Optional[List[str]] = None,
                             supplementary_info_col: str = None, indexing_whole_knowledge=False,

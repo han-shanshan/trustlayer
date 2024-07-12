@@ -1,11 +1,11 @@
-from utils.constants import GIBBERISH_TASK_NAME, FOX
+from utils.constants import GIBBERISH_TASK, FOX_INSTRUCT
 from inference.inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
-TASK_NAME = GIBBERISH_TASK_NAME
-MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
+TASK_NAME = GIBBERISH_TASK
+MODEL_NAME = FOX_INSTRUCT
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME
 

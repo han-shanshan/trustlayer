@@ -2,10 +2,9 @@ import os
 import numpy as np
 import pandas as pd
 from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
-from data_operation.data_reader import DataReader
-from utils.constants import TOPIC_TASK_NAME, SEMANTIC_TASK_NAME, GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, \
-    HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, \
-    HALLUCINATION_EXPLANATION_TASK_NAME, EXPLANATION_RESPONSE_TEMPLATE
+from data_operation.data_file_operator import FileOperator
+from utils.constants import TOPIC_TASK, SEMANTIC_TASK, GIBBERISH_TASK, UNSAFE_PROMPT_TASK, \
+    HALLUCINATION_TASK, TOXICITY_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK
 from utils.file_operations import write_a_dictionary_to_file
 
 
@@ -18,32 +17,27 @@ def remove_newlines(data_entry):
 
 class DataLoader:
     def __init__(self):
-        pass
-
-    def load_reasoning_data(self, task_name, dataset_types: list = None, data_num_dict=None):
-        if task_name == HALLUCINATION_EXPLANATION_TASK_NAME:
-            task_data = self.get_hybrid_hallucination_data(dataset_types, data_num_dict=data_num_dict)
-            return task_data
+        self.data_reader = FileOperator()
 
     def load_data(self, task_name, dataset_types: list = None, data_num_dict=None, desired_total_data_n=None,
                   training_per=0.8, validation_per=0.1, test_per=0.1):
         # None: return full dataset by default
-        if task_name == TOPIC_TASK_NAME:
+        if task_name == TOPIC_TASK:
             task_data = load_dataset("cardiffnlp/tweet_topic_multi")
-        elif task_name == SEMANTIC_TASK_NAME:
+        elif task_name == SEMANTIC_TASK:
             task_data = load_dataset("sem_eval_2018_task_1", "subtask5.english")
-        elif task_name == GIBBERISH_TASK_NAME:
+        elif task_name == GIBBERISH_TASK:
             task_data = self.load_gibberish_data()
-        elif task_name == UNSAFE_PROMPT_TASK_NAME:
+        elif task_name == UNSAFE_PROMPT_TASK:
             task_data = self.load_unsafe_prompt_data()
-        elif task_name == HALLUCINATION_TASK_NAME:
+        elif task_name == HALLUCINATION_TASK:
             task_data = self.load_hallucination_data()
-        elif task_name == TOXICITY_TASK_NAME:
+        elif task_name == TOXICITY_TASK:
             if dataset_types is None:
                 task_data = self.load_toxicity_data()  # default
             else:
                 task_data = self.load_toxic_sophisticated_data()
-        elif task_name == ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME:
+        elif task_name == ALL_IN_ONE_UNSAFE_CONTENTS_TASK:
             task_data = self.all_in_one_data(dataset_types, data_num_dict=data_num_dict)
             return task_data
         else:
@@ -61,73 +55,7 @@ class DataLoader:
         print(f"new dataset: {DatasetDict(small_dataset)}")
         return small_dataset
 
-    def get_hybrid_hallucination_data(self, dataset_types: list = None, data_num_dict=None):
-        if data_num_dict is None:
-            raise ValueError(f"data num dict is None!")
-        print(f"dataset_types = {dataset_types}")
-        dataset_list = []
 
-        for i in range(len(dataset_types)):
-            dataset_type = dataset_types[i]
-            dataset = self.process_a_subdataset_for_hybrid_hallucination_data(dataset_type)
-            dataset_list.append(dataset.shuffle(seed=0))
-
-        # dataset_list = self.remove_duplicates_between_datasets(dataset_list) # todo: when there are more datasets
-
-        test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
-            data_num_dict, dataset_types, dataset_list)
-
-        training_dataset = training_dataset.map(lambda example: {
-            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
-        validation_dataset = validation_dataset.map(lambda example: {
-            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], example["output"])})
-        test_dataset = test_dataset.map(lambda example: {
-            "text": self.get_llama_prompt_for_hallucination_reasoning_task(example["input"], "")})
-
-        datasets = DatasetDict({
-            'train': training_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text"]]),
-            'validation': validation_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text"]]),
-            'test': test_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text", "output"]])
-        })
-        print(f"final datasets = {datasets}")
-        return datasets
-
-    @staticmethod
-    def get_llama_prompt_for_hallucination_reasoning_task(input, output):
-        return f"<s>[INST] <<SYS>> You are a helpful assistant. <</SYS>> According to the Question and the Contexts, is there any hallucination in the LLM Answer?  {input}. {EXPLANATION_RESPONSE_TEMPLATE}[/INST] {output}. "
-
-    @staticmethod
-    def construct_input_output_pairs_for_hall_detection(question, knowledge, llm_answer, output=""):
-        return {"input": f"Question: {question}; Context: {knowledge}; LLM Answer: {llm_answer}",
-                "output": output}
-
-    def process_a_subdataset_for_hybrid_hallucination_data(self, dataset_type):
-        sub_dataset = None
-        # if dataset_type == "rag-hallucination1000":
-        #     sub_dataset = load_dataset("neural-bridge/rag-hallucination-dataset-1000")
-        #     sub_dataset = self._merge_several_datasets_of_different_phases([sub_dataset])
-        #     sub_dataset = sub_dataset.map(lambda example: {"Input": f"Question: {example['question']}; Context: {example['context']}; Answer: {example['answer']}", "Output": "No, the context does not contain necessary information to answer the question. "})
-        #     print(sub_dataset)
-        #     sub_dataset = self.merge_datasets_of_different_phases_and_remove_duplicates([sub_dataset], col_name1="Input", col_name2="Output")
-        if dataset_type == "HaluEval":
-            sub_dataset = load_dataset("pminervini/HaluEval", "qa")["data"]
-            sub_dataset.filter(
-                lambda example: example['question'] is not None and example["knowledge"] is not None and example[
-                    "right_answer"] is not None and example["hallucinated_answer"] is not None)
-            sub_dataset1 = sub_dataset.map(lambda example: self.construct_input_output_pairs_for_hall_detection(
-                example['question'], example['knowledge'], example['right_answer'],
-                output="No, the answer can be deduced from the context. "))
-            sub_dataset2 = sub_dataset.map(lambda example: self.construct_input_output_pairs_for_hall_detection(
-                example['question'], example['knowledge'], example['hallucinated_answer'],
-                output="Yes, the answer cannot be deduced from the context or the answer is useless. "))
-            sub_dataset = concatenate_datasets([sub_dataset1, sub_dataset2])
-
-        # sub_dataset = self.remove_duplicates_in_a_dataset(sub_dataset, col_name1="input", col_name2="output")
-
-        return sub_dataset
 
     """
     (train #, evaluation #, testing #)
@@ -165,7 +93,7 @@ class DataLoader:
 
         dataset_list = self.remove_duplicates_between_datasets(dataset_list)
 
-        test_dataset, training_dataset, validation_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
+        training_dataset, validation_dataset, test_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
             data_num_dict, dataset_types, dataset_list)
 
         datasets = DatasetDict({
@@ -202,8 +130,7 @@ class DataLoader:
                     training_dataset = concatenate_datasets([training_dataset, sub_data])
                 if "label" in sub_data.column_names:
                     meta["training_label_1"], meta["training_label_0"], meta[
-                        "training_total"] = self.count_label_numbers(
-                        sub_data)
+                        "training_total"] = self.count_label_numbers(sub_data)
             if validation_data_num > 0:
                 sub_data = dataset_list[i].select(range(training_data_num, training_data_num + validation_data_num))
                 if validation_dataset is None:
@@ -211,8 +138,8 @@ class DataLoader:
                 else:
                     validation_dataset = concatenate_datasets([validation_dataset, sub_data])
                 if "label" in sub_data.column_names:
-                    meta["validation_label_1"], meta["validation_label_0"], meta[
-                        "validation_total"] = self.count_label_numbers(sub_data)
+                    meta["validation_label_1"], meta["validation_label_0"], meta["validation_total"] \
+                        = self.count_label_numbers(sub_data)
             if test_data_num > 0:
                 sub_data = dataset_list[i].select(range(training_data_num + validation_data_num,
                                                         training_data_num + validation_data_num + test_data_num))
@@ -225,7 +152,7 @@ class DataLoader:
             dataset_label_counter_meta[dataset_type] = meta
         write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt",
                                    dictionary=dataset_label_counter_meta)
-        return test_dataset, training_dataset, validation_dataset
+        return training_dataset, validation_dataset, test_dataset
 
     @staticmethod
     def remove_duplicates_between_datasets(dataset_list):
@@ -340,8 +267,7 @@ class DataLoader:
     @staticmethod
     def load_HEx_PHI_data():
         data_frames = []
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        csv_file_directory = os.path.join(dir_path, '..', 'cache', 'downloaded_data', 'HEx-PHI')
+        csv_file_directory = FileOperator.get_file_path('..', 'cache', 'downloaded_data', 'HEx-PHI')
         for filename in os.listdir(csv_file_directory):
             if filename.endswith('.csv'):  # Check for CSV files
                 file_path = os.path.join(csv_file_directory, filename)
@@ -514,9 +440,7 @@ class DataLoader:
         })
         return split_dataset
 
-    @staticmethod
-    def _load_jigsaw_comment_dataset():
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+    def _load_jigsaw_comment_dataset(self):
         """
             DatasetDict({
                 train: Dataset({
@@ -524,10 +448,10 @@ class DataLoader:
                     num_rows: 159571
                 })
             })
-            """
-        csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
-                                     'jigsaw-toxic-comment-classification-challenge', 'train.csv')
-        jigsaw_comment_dataset = DataReader.read_csv_file_data(csv_file_path=csv_file_path)
+        """
+        jigsaw_comment_dataset = self.data_reader.read_dataset_from_csv_file('..', 'cache', 'downloaded_data',
+                                                                             'jigsaw-toxic-comment-classification-challenge',
+                                                                             'train.csv')
 
         def create_label_for_jigsaw_comment_dataset(example):
             example['label'] = 1 if any([example[col] == 1 for col in
@@ -541,20 +465,18 @@ class DataLoader:
         jigsaw_comment_dataset = jigsaw_comment_dataset.rename_column('comment_text', 'text')
         return jigsaw_comment_dataset
 
-    @staticmethod
-    def _load_original_jigsaw_unindended_bias_dataset():
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+    def _load_original_jigsaw_unindended_bias_dataset(self):
         """
-                DatasetDict({
-                    train: Dataset({
-                        features: ['id', 'comment_text', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'],
-                        num_rows: 159571
-                    })
+            DatasetDict({
+                train: Dataset({
+                    features: ['id', 'comment_text', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'],
+                    num_rows: 159571
                 })
-                """
-        csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
-                                     'jigsaw-unintended-bias-in-toxicity-classification', 'all_data.csv')
-        dataset = DataReader.read_csv_file_data(csv_file_path=csv_file_path)  # 1999516
+            })
+        """
+        dataset = self.data_reader.read_dataset_from_csv_file('..', 'cache', 'downloaded_data',
+                                                              'jigsaw-unintended-bias-in-toxicity-classification',
+                                                              'all_data.csv')  # 1999516
         return dataset
         # if desired_number is None:
         #     return dataset
@@ -726,12 +648,9 @@ class DataLoader:
         print(f"gibberish_march22_dataset sample={gibberish_march22_dataset['train'][0]}")
         return gibberish_march22_dataset
 
-    @staticmethod
-    def _read_gibberish_march22_from_csv(file_name):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        csv_file_path = os.path.join(dir_path, '..', 'cache', 'downloaded_data',
-                                     'gibberish_mar22', file_name)
-        return DataReader.read_csv_file_data(csv_file_path=csv_file_path)
+    def _read_gibberish_march22_from_csv(self, file_name):
+        return self.data_reader.read_dataset_from_csv_file('..', 'cache', 'downloaded_data',
+                                                           'gibberish_mar22', file_name)
 
     def filter_non_records(self, dataset, col_name):
         filtered_dataset = {}

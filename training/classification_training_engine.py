@@ -9,9 +9,9 @@ import torch
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from training.training_config_manager import TrainingConfigManager
 from training.training_engine import TrainingEngine
-from utils.constants import GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, \
-    TOXICITY_TASK_NAME, MODEL_NAME_TINYLAMMA, FOX, SEMANTIC_TASK_NAME, TOPIC_TASK_NAME, \
-    ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
+from utils.constants import GIBBERISH_TASK, UNSAFE_PROMPT_TASK, HALLUCINATION_TASK, \
+    TOXICITY_TASK, MODEL_NAME_TINYLAMMA, FOX_INSTRUCT, SEMANTIC_TASK, TOPIC_TASK, \
+    ALL_IN_ONE_UNSAFE_CONTENTS_TASK
 from data_operation.data_processor import DataProcessor
 import evaluate
 from utils.file_operations import write_hf_dataset_to_csv
@@ -84,8 +84,8 @@ class ClassificationTrainingEngine(TrainingEngine):
         self.data_processor = DataProcessor(task_name=self.task_name)
 
     def set_label_metrics(self):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME,
-                              TOXICITY_TASK_NAME, ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK, UNSAFE_PROMPT_TASK, HALLUCINATION_TASK,
+                              TOXICITY_TASK, ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             self.label_metrics = self.compute_metrics_for_single_label_tasks
         else:
             self.label_metrics = self.compute_metrics_for_multilabel_tasks
@@ -105,15 +105,15 @@ class ClassificationTrainingEngine(TrainingEngine):
         return compute_metrics(labels, predictions, probabilities, metrics_average=self.metrics_average)
 
     def get_pretrained_model(self, label_dicts=None, id2label=None, label2id=None):
-        if self.task_name in [GIBBERISH_TASK_NAME, UNSAFE_PROMPT_TASK_NAME, HALLUCINATION_TASK_NAME, TOXICITY_TASK_NAME,
-                              ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME]:
+        if self.task_name in [GIBBERISH_TASK, UNSAFE_PROMPT_TASK, HALLUCINATION_TASK, TOXICITY_TASK,
+                              ALL_IN_ONE_UNSAFE_CONTENTS_TASK]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       num_labels=len(label_dicts),
                                                                       id2label=id2label,
                                                                       label2id=label2id,
                                                                       load_in_8bit=False
                                                                       )
-        elif self.task_name in [SEMANTIC_TASK_NAME, TOPIC_TASK_NAME]:
+        elif self.task_name in [SEMANTIC_TASK, TOPIC_TASK]:
             return AutoModelForSequenceClassification.from_pretrained(self.base_model_name,
                                                                       problem_type="multi_label_classification",
                                                                       num_labels=len(label_dicts),
@@ -136,7 +136,7 @@ class ClassificationTrainingEngine(TrainingEngine):
     @staticmethod
     def get_tokenizer(model, base_model_name):
         tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-        if base_model_name in [MODEL_NAME_TINYLAMMA, FOX]:
+        if base_model_name in [MODEL_NAME_TINYLAMMA, FOX_INSTRUCT]:
             # tokenizer.pad_token = tokenizer.eos_token
             # tokenizer.padding_side = 'right'  # to prevent warnings
             tokenizer.pad_token = tokenizer.eos_token

@@ -1,11 +1,11 @@
-from utils.constants import GIBBERISH_TASK_NAME, MODEL_NAME_TINYLAMMA
+from utils.constants import GIBBERISH_TASK, MODEL_NAME_TINYLAMMA
 from inference.inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
-TASK_NAME = GIBBERISH_TASK_NAME
+TASK_NAME = GIBBERISH_TASK
 MODEL_NAME = MODEL_NAME_TINYLAMMA  # "google-bert/bert-base-uncased"
 lora_storage_path = MODEL_NAME.split("/")[1]
 OUTPUT_DIR = lora_storage_path + "-" + TASK_NAME

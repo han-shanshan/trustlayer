@@ -1,14 +1,11 @@
-
 from training.training_engine import TrainingEngine
-import os
-from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME, FOX
+from utils.constants import ALL_IN_ONE_UNSAFE_CONTENTS_TASK, FOX_INSTRUCT
 import wandb
-from datasets import load_dataset
 import torch
 
 
-TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK_NAME
-MODEL_NAME = FOX  # "google-bert/bert-base-uncased"
+TASK_NAME = ALL_IN_ONE_UNSAFE_CONTENTS_TASK
+MODEL_NAME = FOX_INSTRUCT  # "google-bert/bert-base-uncased"
 
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections
@@ -62,7 +59,7 @@ if __name__ == '__main__':
     trainer = TrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
                              config={"metrics_average": "macro", "dataset_types": dataset_types,
                                      "data_num_dict": data_num_dict})
-    trainer.train(batch_size=32)
+    trainer.process(batch_size=32)
     # trainer.train()
     # text = "i'm happy hahaha"
     #
