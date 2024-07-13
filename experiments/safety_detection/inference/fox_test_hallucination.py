@@ -25,15 +25,19 @@ if __name__ == '__main__':
         knowledge="Iron Man is starring Robert Downey Jr.Robert Downey Jr. starred in Zodiac (Crime Fiction "
                   "Film)Zodiac (Crime Fiction Film) is starring Jake Gyllenhaal",
         log_type="dialogue",
-        llm_answer="I'm not a fan of crime movies, but I did know that RDJ starred in Zodiac with Tom Hanks."
+        llm_answer="I like crime fiction! Didn't know RDJ was in there. Jake Gyllenhaal starred as well."
+        # llm_answer="I'm not a fan of crime movies, but I did know that RDJ starred in Zodiac with Tom Hanks."
         # output=""  #Yes  # "No, the answer can be deduced from the context. "
     )
     # text = DataLoader().get_llama_prompt_for_hallucination_reasoning_task(input_output_pair["input"],
     #                                                                       input_output_pair["output"])
     print(input_information)
     inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX_INSTRUCT,
-                                                adapter_path="./fox_adapters/Fox-Instruct-hallucination_reasoning")
+                                                # adapter_path=FOX_INSTRUCT
+                                                adapter_path="./fox_adapters/Fox-Instruct-hallucination_reasoning-2-qa_and_dialogue"
+    )
 
     prompt = inference_engine.get_hallu_reasoning_prompt_for_fox_instruct(input_information)
     print("=============")
+    print(f"prompt = {prompt}")
     print(inference_engine.inference(prompt))

@@ -16,11 +16,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 # accuracy = evaluate.load("accuracy")
-accuracy_metric = load_metric("accuracy")
-precision_metric = load_metric("precision")
-recall_metric = load_metric("recall")
-f1_metric = load_metric("f1")
-roc_auc_metric = evaluate.load("roc_auc")
+accuracy_metric = load_metric("accuracy", trust_remote_code=True)
+precision_metric = load_metric("precision", trust_remote_code=True)
+recall_metric = load_metric("recall", trust_remote_code=True)
+f1_metric = load_metric("f1", trust_remote_code=True)
+roc_auc_metric = evaluate.load("roc_auc", trust_remote_code=True)
 
 
 # tokenizer = AutoTokenizer.from_pretrained(FOX_BASE_GPU)
@@ -200,21 +200,11 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
     def evaluate_one_input(model, results, text, tokenizer):
         inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
                            return_tensors='pt', return_token_type_ids=False).to(model.device)
-        # output = model(**inputs.to(model.device))
-        # model.generate(**inputs, max_new_token=)
         output = model.generate(**inputs, max_new_tokens=16, output_logits=True,
                                 return_dict_in_generate=True, output_scores=True)
         logits = output.logits
-        # output_token_ids = [torch.argmax(t).item() for t in logits]
-        # print(f"====== {tokenizer.decode(output.sequences[0].tolist())}")
-        # print(f"===-----=== {tokenizer.decode(output_token_ids)}")
-        # print(f"l  = {logits}")
-        # print(f"{type(logits)=}")
-        # print(f"keys = {output.keys()}")
-        # print(f"shape = {logits.shape = }")
         next_word_logits = logits[0]
         probs = torch.softmax(next_word_logits, dim=-1)
-        # print("----------")
         prob_yes = 0
         prob_no = 0
         top_k_num = 10
@@ -249,7 +239,6 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                                                            task_name=self.task_name, batch_size=batch_size),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
-            # tokenizer=tokenizer,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
             data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
                                                           response_template=FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE)
