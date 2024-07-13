@@ -1,13 +1,13 @@
 import numpy as np
 from datasets import DatasetDict, Dataset
-from utils.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME
+from utils.constants import CUSTOMER_HALLUCINATION_TASK
 from data_operation.data_processor import DataProcessor
 from utils.translator import Translator
 
 
 class HallucinationTrainingDataProcessor(DataProcessor):
     def __init__(self):
-        super().__init__(task_name=CUSTOMIZED_HALLUCINATION_TASK_NAME)
+        super().__init__(task_name=CUSTOMER_HALLUCINATION_TASK)
         self.multilingual_label_mapping = {}
 
     def set_labels(self, labels):

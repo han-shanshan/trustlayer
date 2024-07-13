@@ -1,8 +1,8 @@
 from customized_hallucination_pipeline.offline_processing.hallucination_training_data_processor import \
     HallucinationTrainingDataProcessor
 from customized_hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
-from utils.constants import CUSTOMIZED_HALLUCINATION_TASK_NAME, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
-    FOX
+from utils.constants import CUSTOMER_HALLUCINATION_TASK, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
+    FOX_INSTRUCT
 from inference.inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
@@ -13,7 +13,7 @@ from training.training_config_manager import TrainingConfigManager
 
 class HallucinationTrainingEngine(TrainingEngine):
     def __init__(self, base_model_name):
-        super().__init__(base_model_name, task_name=CUSTOMIZED_HALLUCINATION_TASK_NAME)
+        super().__init__(base_model_name, task_name=CUSTOMER_HALLUCINATION_TASK)
         self.model_name = self.base_model_name
         if self.base_model_name in [MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE]:
             self.model_name = self.base_model_name.split("/")[1]
@@ -21,7 +21,7 @@ class HallucinationTrainingEngine(TrainingEngine):
             self.model_name = "Fox"
 
     def set_task_type(self, task_name):
-        self.task_name = CUSTOMIZED_HALLUCINATION_TASK_NAME
+        self.task_name = CUSTOMER_HALLUCINATION_TASK
 
     def set_label_metrics(self):
         self.label_metrics = self.compute_metrics_for_single_label_tasks
@@ -31,7 +31,8 @@ class HallucinationTrainingEngine(TrainingEngine):
                                                                               num_labels=len(label_dicts),
                                                                               id2label=id2label,
                                                                               label2id=label2id,
-                                                                              load_in_8bit=False
+                                                                              load_in_8bit=False,
+                                                                              trust_remote_code=True
                                                                               )
         return pretrained_model
 
@@ -47,7 +48,7 @@ class HallucinationTrainingEngine(TrainingEngine):
         print("=======start loading metric=========")
         # metric = evaluate.load("accuracy")
         # Define LoRA Config
-        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=FOX))
+        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=FOX_INSTRUCT))
         print("=======print_trainable_parameters============")
         model.print_trainable_parameters()  # see % trainable parameters
         # training_args = TrainingArguments(output_dir=OUTPUT_DIR, num_train_epochs=500)
