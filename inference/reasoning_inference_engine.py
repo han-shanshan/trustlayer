@@ -1,3 +1,4 @@
+from datasets import Dataset, load_metric
 from transformers import AutoModelForCausalLM
 from inference.inference_engine import InferenceEngine
 import torch
@@ -9,12 +10,46 @@ https://github.com/huggingface/peft/discussions/661
 """
 
 
-class ReasoningInferenceEngine(InferenceEngine):
-    def __init__(self, task_name, base_model, adapter_path=None, inference_config=None,
-                 problem_type="single_label_classification"):
-        super().__init__(task_name, base_model, adapter_path, inference_config, problem_type)
+accuracy_metric = load_metric("accuracy", trust_remote_code=True)
+precision_metric = load_metric("precision", trust_remote_code=True)
+recall_metric = load_metric("recall", trust_remote_code=True)
+f1_metric = load_metric("f1", trust_remote_code=True)
+# roc_auc_metric = evaluate.load("roc_auc", trust_remote_code=True)
 
-    def get_model(self, model_path):
+
+def compute_metrics(labels, predictions, metrics_average="macro"):
+    print(f"labels = {labels}")
+    print(f"predictions = {predictions}")
+    accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
+    precision = precision_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    recall = recall_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    f1 = f1_metric.compute(predictions=predictions, references=labels, average=metrics_average)
+    # roc_auc = roc_auc_metric.compute(references=labels, prediction_scores=probabilities)
+
+    return {
+        "accuracy": accuracy["accuracy"],
+        "precision": precision["precision"],
+        "recall": recall["recall"],
+        "f1": f1["f1"],
+        # "roc_auc": roc_auc["roc_auc"]
+    }
+
+
+class ReasoningInferenceEngine(InferenceEngine):
+    def __init__(self, task_name, base_model, model=None, adapter_path=None, inference_config=None,
+                 problem_type="single_label_classification"):
+        super().__init__(task_name=task_name, base_model=base_model, model=model,
+                         adapter_path=adapter_path, inference_config=inference_config, problem_type=problem_type)
+
+    def get_model(self, base_model=None, adapter_path=None, model=None):
+        if model is not None:
+            return model
+        if adapter_path is not None:
+            model_path = adapter_path
+        elif base_model is not None:
+            model_path = base_model
+        else:
+            raise ValueError("Base_model is None and adapter_path is None")
         return AutoModelForCausalLM.from_pretrained(model_path, load_in_8bit=False,
                                                     torch_dtype=torch.float32, trust_remote_code=True)
 
@@ -51,21 +86,17 @@ class ReasoningInferenceEngine(InferenceEngine):
     def inference(self, text, text_pair=None, max_new_tokens=100):
         encoded_input = self.tokenizer(text, return_tensors="pt",
                                        truncation=True, padding=True, max_length=8192, return_token_type_ids=False)
-        input_ids = encoded_input.input_ids
-        outputs = self.model.generate(input_ids=input_ids, max_new_tokens=max_new_tokens,
+        outputs = self.model.generate(input_ids=encoded_input.input_ids, max_new_tokens=max_new_tokens,
                                       pad_token_id=self.tokenizer.eos_token_id,
-                                      temperature=0,  # Adjust temperature for more controlled randomness
-                                      top_p=0.9,
-                                      attention_mask=encoded_input.attention_mask,
-                                      early_stopping=True)
-        # print(f"outputs = {outputs}")
+                                      # temperature=0,  # Adjust temperature for more controlled randomness
+                                      # top_p=0.9, early_stopping=True
+                                      attention_mask=encoded_input.attention_mask)
 
         # print(f"outputs[0] = {outputs[0]}")
         result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        print(f"result = {result}")
-        plaintext_result = result.split("<|assistant|>")[-1]# .split("\n")[0]
+        # print(f"result = {result}")
+        plaintext_result = result.split("<|assistant|>")[-1]  # .split("\n")[0]
         plaintext_result = plaintext_result.strip().split("\n")[0]
-        print(f"plaintext result 2 = {plaintext_result}")
         if plaintext_result.startswith("No"):
             plaintext_result = "No. "
 
@@ -114,5 +145,39 @@ class ReasoningInferenceEngine(InferenceEngine):
 
         return plaintext_result
 
-    def evaluate(self, dataset):
-        pass
+    def evaluate(self, plaintext_dataset):
+        # Dataset({
+        #     features: ['is_hallucination', 'text'],
+        #     num_rows: 1000
+        # })
+        print(f"plaintext dataset = {plaintext_dataset}")
+
+        def tokenize_function(examples):
+            inputs = self.tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
+                                    return_tensors='pt', return_token_type_ids=False)
+            return inputs
+
+        # dataset.cleanup_cache_files()
+        encoded_dataset = plaintext_dataset.map(tokenize_function, batched=True,
+                                                remove_columns=plaintext_dataset.column_names)
+        encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
+        print(f"encoded_dataset = {encoded_dataset}")
+
+        inference_results = []
+        with torch.no_grad():
+            self.model.eval()
+            for j in range(len(plaintext_dataset)):
+                text = plaintext_dataset[j]['text']
+                inference_result = self.inference(text=text)
+
+                if inference_result.startswith("Yes") or inference_result.startswith("yes"):
+                    inference_results.append(1)
+                elif inference_result.startswith("No") or inference_result.startswith("no"):
+                    inference_results.append(0)
+        # print(f"real results = {plaintext_dataset['is_hallucination']}")
+        # print(f"inference results = {inference_results}")
+        labels = [1 if item == 'Yes' else 0 for item in plaintext_dataset['is_hallucination']]
+        print(compute_metrics(labels=labels, predictions=inference_results))
+
+
+

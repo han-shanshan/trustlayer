@@ -9,6 +9,7 @@ from transformers import AutoModelForSequenceClassification
 from transformers import Trainer
 from peft import get_peft_model
 from training.training_config_manager import TrainingConfigManager
+from utils.util import get_tokenizer
 
 
 class HallucinationTrainingEngine(TrainingEngine):
@@ -42,7 +43,7 @@ class HallucinationTrainingEngine(TrainingEngine):
             file_path="../data/hallucination_cases.xlsx")
         print(f"id2labels={id2labels}")
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
-        tokenizer = self.get_tokenizer(model)
+        tokenizer = get_tokenizer(base_model_name=self.base_model_name) # todo
         encoded_dataset = data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
 
         print("=======start loading metric=========")

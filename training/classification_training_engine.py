@@ -20,11 +20,13 @@ from datetime import datetime
 from datasets import DatasetDict
 
 # accuracy = evaluate.load("accuracy")
-accuracy_metric = load_metric("accuracy")
-precision_metric = load_metric("precision")
-recall_metric = load_metric("recall")
-f1_metric = load_metric("f1")
-roc_auc_metric = evaluate.load("roc_auc")
+from utils.util import get_tokenizer
+
+accuracy_metric = load_metric("accuracy", trust_remote_code=True)
+precision_metric = load_metric("precision", trust_remote_code=True)
+recall_metric = load_metric("recall", trust_remote_code=True)
+f1_metric = load_metric("f1", trust_remote_code=True)
+roc_auc_metric = evaluate.load("roc_auc", trust_remote_code=True)
 
 
 def compute_metrics(labels, predictions, probabilities, metrics_average="macro"):
@@ -133,16 +135,6 @@ class ClassificationTrainingEngine(TrainingEngine):
         print(f"label name = {label_names}, label2id = {label2ids}, id2labels = {id2labels}")
         return dataset, label_names, id2labels, label2ids
 
-    @staticmethod
-    def get_tokenizer(model, base_model_name):
-        tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-        if base_model_name in [MODEL_NAME_TINYLAMMA, FOX_INSTRUCT]:
-            # tokenizer.pad_token = tokenizer.eos_token
-            # tokenizer.padding_side = 'right'  # to prevent warnings
-            tokenizer.pad_token = tokenizer.eos_token
-            model.config.pad_token_id = model.config.eos_token_id
-        return tokenizer
-
     def get_encoded_dataset(self, dataset, tokenizer):
         encoded_dataset = self.data_processor.process_encoded_datasets(dataset=dataset, tokenizer=tokenizer)
         print(f"encoded_dataset in training: {encoded_dataset}")
@@ -179,8 +171,8 @@ class ClassificationTrainingEngine(TrainingEngine):
         t = str(datetime.now())
         dataset, label_names, id2labels, label2ids = self.get_training_data(idx=t)
         model = self.get_pretrained_model(label_names, id2labels, label2ids)
-
-        tokenizer = self.get_tokenizer(model, base_model_name=self.base_model_name)
+        tokenizer = get_tokenizer(base_model_name=self.base_model_name)
+        model.config.pad_token_id = model.config.eos_token_id
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
         trainer = self.train(model=model, encoded_dataset=encoded_dataset, batch_size=batch_size, idx=t)
         self.evaluate(tokenizer=tokenizer, trainer=trainer)

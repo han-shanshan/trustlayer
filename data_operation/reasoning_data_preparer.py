@@ -15,7 +15,8 @@ class ReasoningDataPreparer:
         information_input = self.get_input_information(knowledge, llm_answer, log_type, question)
         if is_hallucination:
             detection_result = "Yes"
-            reason = self.get_reason_for_hallucination_with_GPT(is_hallucination=is_hallucination, input=information_input)
+            reason = self.get_reason_for_hallucination_with_GPT(is_hallucination=is_hallucination,
+                                                                input=information_input)
         else:
             detection_result = "No"
             reason = ""
@@ -64,11 +65,11 @@ class ReasoningDataPreparer:
                 dataset = dataset.rename_column('right_response', 'right_answer')
                 dataset = dataset.rename_column('hallucinated_response', 'hallucinated_answer')
             if subset_name == "summarization":
-                dataset = dataset.map(lambda example: {"question": "You are a helpful assistant, please help summarize the document."})
+                dataset = dataset.map(
+                    lambda example: {"question": "You are a helpful assistant, please help summarize the document."})
                 dataset = dataset.rename_column('right_summary', 'right_answer')
                 dataset = dataset.rename_column('hallucinated_summary', 'hallucinated_answer')
                 dataset = dataset.rename_column('document', 'knowledge')
-
 
             dataset.filter(lambda example: example['question'] is not None and example["knowledge"] is not None
                                            and example["right_answer"] is not None and example[

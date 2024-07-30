@@ -14,24 +14,13 @@ from data_operation.data_processor import DataProcessor
 import evaluate
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
-
+from utils.util import get_tokenizer
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy", trust_remote_code=True)
 precision_metric = load_metric("precision", trust_remote_code=True)
 recall_metric = load_metric("recall", trust_remote_code=True)
 f1_metric = load_metric("f1", trust_remote_code=True)
 roc_auc_metric = evaluate.load("roc_auc", trust_remote_code=True)
-
-
-# tokenizer = AutoTokenizer.from_pretrained(FOX_BASE_GPU)
-# tokenizer.pad_token = tokenizer.eos_token
-#
-# id1 = tokenizer.encode('Yes', add_special_tokens=False)[0]
-# id2 = tokenizer.encode('yes', add_special_tokens=False)[0]
-# id3 = tokenizer.encode('No', add_special_tokens=False)[0]
-# id4 = tokenizer.encode('no', add_special_tokens=False)[0]
-#
-# valid_token_ids = [id1, id2, id3, id4]
 
 # Adapted from https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/trl/trainer/utils.py#L56
 class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
@@ -177,59 +166,42 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         print(f"encoded_dataset = {encoded_dataset}")
         return encoded_dataset
 
-    def evaluate(self, model=None, dataset=None, tokenizer=None):
-        results = []
-        real_results = []
-        with torch.no_grad():
-            model.eval()
+    # def evaluate(self, model=None, dataset=None, tokenizer=None):
 
-            for j in range(5):
-                # for j in range(len(dataset["test"])):
-                # text = DataLoader.get_llama_prompt_for_hallucination_reasoning_task(dataset["test"][j]['text'], "")
-                text = dataset["test"][j]['text']
-                print(f"text = {text}")
-                self.evaluate_one_input(model, results, text, tokenizer)
-                print(f"desired output = {str(dataset['test'][j]['output']).lower()}, prob = {results[j]}")
-
-                if str(dataset["test"][j]['output']).lower() == "yes":
-                    real_results.append(1)
-                else:
-                    real_results.append(0)
-
-    @staticmethod
-    def evaluate_one_input(model, results, text, tokenizer):
-        inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
-                           return_tensors='pt', return_token_type_ids=False).to(model.device)
-        output = model.generate(**inputs, max_new_tokens=16, output_logits=True,
-                                return_dict_in_generate=True, output_scores=True)
-        logits = output.logits
-        next_word_logits = logits[0]
-        probs = torch.softmax(next_word_logits, dim=-1)
-        prob_yes = 0
-        prob_no = 0
-        top_k_num = 10
-        while True:
-            top_probs, top_indices = torch.topk(probs, top_k_num)
-            prob_list = top_probs[0].tolist()
-            top_indice = top_indices[0].tolist()
-            print(f"top_indices = {top_indices}")
-
-            for idx in range(len(top_indice)):
-                next_word = tokenizer.decode([top_indice[idx]])
-                if str(next_word).lower() == "yes":  # the result might be "Yes", yes", "No", and "no"
-                    prob_yes += prob_list[idx]
-                if str(next_word).lower() == "no":
-                    prob_no += prob_list[idx]
-            if prob_yes > 0 or prob_no > 0:
-                results.append(prob_yes / (prob_yes + prob_no))
-                break
-            else:
-                top_k_num += 10
-                print("continue...")
-            if top_k_num >= 50:
-                results.append(0)
-                break
-        print(f"first token: {tokenizer.decode([top_indice[0]])}")
+    # @staticmethod
+    # def evaluate_one_input(model, results, text, tokenizer):
+    #     inputs = tokenizer(text, truncation=True, padding=True, max_length=8192,
+    #                        return_tensors='pt', return_token_type_ids=False).to(model.device)
+    #     output = model.generate(**inputs, max_new_tokens=16, output_logits=True,
+    #                             return_dict_in_generate=True, output_scores=True)
+    #     logits = output.logits
+    #     next_word_logits = logits[0]
+    #     probs = torch.softmax(next_word_logits, dim=-1)
+    #     prob_yes = 0
+    #     prob_no = 0
+    #     top_k_num = 10
+    #     while True:
+    #         top_probs, top_indices = torch.topk(probs, top_k_num)
+    #         prob_list = top_probs[0].tolist()
+    #         top_indice = top_indices[0].tolist()
+    #         print(f"top_indices = {top_indices}")
+    #
+    #         for idx in range(len(top_indice)):
+    #             next_word = tokenizer.decode([top_indice[idx]])
+    #             if str(next_word).lower() == "yes":  # the result might be "Yes", yes", "No", and "no"
+    #                 prob_yes += prob_list[idx]
+    #             if str(next_word).lower() == "no":
+    #                 prob_no += prob_list[idx]
+    #         if prob_yes > 0 or prob_no > 0:
+    #             results.append(prob_yes / (prob_yes + prob_no))
+    #             break
+    #         else:
+    #             top_k_num += 10
+    #             print("continue...")
+    #         if top_k_num >= 50:
+    #             results.append(0)
+    #             break
+    #     print(f"first token: {tokenizer.decode([top_indice[0]])}")
 
     def train(self, model, encoded_dataset, batch_size=32, idx=None, tokenizer=None):
         output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + idx
@@ -248,19 +220,13 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         model.save_pretrained(output_dir + "-final")
         return peft_trainer
 
-    @staticmethod
-    def get_tokenizer(model, base_model_name):
-        tokenizer = AutoTokenizer.from_pretrained(FOX_INSTRUCT, use_fast=False)
-        tokenizer.pad_token = tokenizer.eos_token
-        return tokenizer
-
     def process(self, batch_size=16):
         t = str(datetime.now())
         model = self.get_pretrained_model()
-        tokenizer = self.get_tokenizer(model, self.base_model_name)
+        tokenizer = get_tokenizer(self.base_model_name)
         model.resize_token_embeddings(len(tokenizer))
         dataset = self.get_training_data(idx=t, tokenizer=tokenizer)
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
-        trainer = self.train(model=model, encoded_dataset=encoded_dataset,
-                             batch_size=batch_size, tokenizer=tokenizer, idx=t)
-        self.evaluate(model=trainer.model, dataset=dataset, tokenizer=tokenizer)
+        self.train(model=model, encoded_dataset=encoded_dataset,
+                   batch_size=batch_size, tokenizer=tokenizer, idx=t)
+        # self.evaluate(model=trainer.model, dataset=dataset, tokenizer=tokenizer)

@@ -11,10 +11,6 @@ class TrainingEngine:
     def get_pretrained_model(self):
         pass
 
-    @staticmethod
-    def get_tokenizer(model, base_model_name):
-        pass
-
     def get_encoded_dataset(self, dataset, tokenizer):
         pass
 

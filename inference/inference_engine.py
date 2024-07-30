@@ -6,9 +6,9 @@ import torch
 import json
 import os
 from training.classification_training_engine import compute_metrics
-from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
 from utils.constants import MULTI_LABEL_CLASSIFICATION_PROBLEM_TYPE, SINGLE_LABEL_CLASSIFICATION_PROBLEM_TYPE, \
     HALLUCINATION_REASONING_TASK
+from utils.util import get_tokenizer
 
 """
 Reference code: 
@@ -18,7 +18,7 @@ https://github.com/huggingface/peft/discussions/661
 
 
 class InferenceEngine:
-    def __init__(self, task_name, base_model, adapter_path=None, inference_config=None,
+    def __init__(self, task_name, base_model, model=None, adapter_path=None, inference_config=None,
                  problem_type="single_label_classification"):
         self.task_name = task_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,13 +30,10 @@ class InferenceEngine:
                                 HALLUCINATION_REASONING_TASK]:
             raise Exception(f"Invalid problem_type: {problem_type}")
         self.problem_type = problem_type
-        self.model_name = base_model.split("/")[1]
-        if adapter_path is not None:
-            model_path = adapter_path
-        else:
-            model_path = base_model
-        self.model = self.get_model(model_path=model_path)
-        self.tokenizer = HallucinationReasoningTrainingEngine.get_tokenizer(self.model, base_model_name=base_model)
+        # self.model_name = base_model.split("/")[1]
+
+        self.model = self.get_model(base_model=base_model, adapter_path=adapter_path, model=model)
+        self.tokenizer = get_tokenizer(base_model_name=base_model)
         self.model.to(self.device)
 
     @staticmethod
@@ -49,7 +46,15 @@ class InferenceEngine:
             with open(general_config_file_path, 'r') as file:
                 return json.load(file)
 
-    def get_model(self, model_path):
+    def get_model(self, base_model=None, adapter_path=None, model=None):
+        if model is not None:
+            return model
+        if adapter_path is not None:
+            model_path = adapter_path
+        elif base_model is not None:
+            model_path = base_model
+        else:
+            raise ValueError("Base_model is None and adapter_path is None")
         return AutoModelForSequenceClassification.from_pretrained(model_path,
                                                                   problem_type=self.problem_type,
                                                                   num_labels=len(self.config[self.task_name]),

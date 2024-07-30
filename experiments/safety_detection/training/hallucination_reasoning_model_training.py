@@ -26,10 +26,14 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     dataset_types = [
         # "rag-hallucination1000", # 1000 in total
-        "HaluEval-qa"
+        "HaluEval-qa",
+        "HaluEval-dialogue",
+        "HaluEval-summarization"
     ]
     data_num_dict = {
-        "HaluEval-qa": {"train": 8000, "validation": 1500, "test": 500},
+        "HaluEval-qa": {"train": 8000, "validation": 1000, "test": 1000},
+        "HaluEval-dialogue": {"train": 8000, "validation": 1000, "test": 1000},
+        "HaluEval-summarization": {"train": 8000, "validation": 1000, "test": 1000},
         # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
     }
 

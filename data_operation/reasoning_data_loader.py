@@ -1,6 +1,6 @@
 from datasets import DatasetDict
 from data_operation.data_loader import DataLoader
-from utils.constants import FOX_INSTRUCT, FOX_BASE_REASONING_RESPONSE_TEMPLATE
+from utils.constants import FOX_BASE_REASONING_RESPONSE_TEMPLATE
 
 
 class ReasoningDataLoader(DataLoader):
@@ -8,29 +8,42 @@ class ReasoningDataLoader(DataLoader):
         super().__init__()
         self.tokenizer = tokenizer
 
-    def get_hallu_reasoning_data_for_fox_instruct(self, training_dataset, validation_dataset, test_dataset):
+    def get_hallu_reasoning_data_for_fox_instruct(self, training_dataset, validation_dataset, test_dataset, is_inference=False):
         print(f"training_dataset = {training_dataset}")
         training_dataset = training_dataset.map(lambda example: {
             "text": self.get_hallu_reasoning_prompt_for_fox_instruct(example["input"],
                                                                      example["is_hallucination"],
-                                                                     example["reason"])})
+                                                                     example["reason"],
+                                                                     is_inference=is_inference)})
         validation_dataset = validation_dataset.map(lambda example: {
             "text": self.get_hallu_reasoning_prompt_for_fox_instruct(example["input"],
                                                                      example["is_hallucination"],
-                                                                     example["reason"])})
+                                                                     example["reason"],
+                                                                     is_inference=is_inference)})
         test_dataset = test_dataset.map(lambda example: {
             "text": self.get_hallu_reasoning_prompt_for_fox_instruct(example["input"],
                                                                      example["is_hallucination"],
-                                                                     example["reason"])})
+                                                                     example["reason"],
+                                                                     is_inference=is_inference)})
         print(f"training_dataset = {training_dataset}")
-        datasets = DatasetDict({
-            'train': training_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text"]]),
-            'validation': validation_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text"]]),
-            'test': test_dataset.remove_columns(
-                [col for col in training_dataset.column_names if col not in ["text"]])
-        })
+        if not is_inference:  # training: only keep text data since is_hallucination && reason are included in text
+            datasets = DatasetDict({
+                'train': training_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text"]]),
+                'validation': validation_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text"]]),
+                'test': test_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text"]])
+            })
+        else:
+            datasets = DatasetDict({
+                'train': training_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text", "is_hallucination"]]),
+                'validation': validation_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text", "is_hallucination"]]),
+                'test': test_dataset.remove_columns(
+                    [col for col in training_dataset.column_names if col not in ["text", "is_hallucination"]])
+            })
         print(f"final datasets = {datasets}")
         return datasets
 
@@ -40,9 +53,7 @@ class ReasoningDataLoader(DataLoader):
         print(f"dataset_types = {dataset_types}")
         dataset_list = []
         for dataset_type in dataset_types:
-            # print(f"dataset_type = {dataset_type}, type = {type(dataset_type)}")
             if "-" in dataset_type:
-
                 folder_name = dataset_type.split("-")[0]
                 data_file_name = dataset_type.split("-")[1] + "_shuffled.csv"
                 sub_dataset = self.data_reader.read_dataset_from_csv_file('..', 'cache', 'downloaded_data',
@@ -54,11 +65,19 @@ class ReasoningDataLoader(DataLoader):
                     sub_dataset = self._merge_several_datasets_of_different_phases(dataset_dict_from_files)
                 else:
                     raise Exception(f"no data files for dataset {dataset_type}")
-            dataset_list.append(sub_dataset['train'])
+            dataset_list.append(sub_dataset['train'])  # not only the training data... this is to get the whole dataset from the csv files
         # dataset_list = self.remove_duplicates_between_datasets(dataset_list) # todo: when there are more datasets
         training_dataset, validation_dataset, test_dataset = self.create_a_hybrid_dataset_based_on_data_num_dict(
             data_num_dict, dataset_types, dataset_list)
-        return training_dataset, validation_dataset, test_dataset
+
+        training_dataset = training_dataset.map(
+            lambda example: {"reason": "" if example["is_hallucination"].strip() == "No" else example["reason"]})
+        validation_dataset = validation_dataset.map(
+            lambda example: {"reason": "" if example["is_hallucination"].strip() == "No" else example["reason"]})
+        test_dataset = test_dataset.map(
+            lambda example: {"reason": "" if example["is_hallucination"].strip() == "No" else example["reason"]})
+
+        return training_dataset.shuffle(seed=42), validation_dataset.shuffle(seed=42), test_dataset.shuffle(seed=42)
 
     def get_hybrid_hallucination_data_for_fox_base(self, training_dataset, validation_dataset, test_dataset):
         training_dataset = training_dataset.map(lambda example: {
@@ -85,26 +104,39 @@ class ReasoningDataLoader(DataLoader):
                f"is there any hallucination in the LLM Answer?  {input_infor}. {FOX_BASE_REASONING_RESPONSE_TEMPLATE}[" \
                f"/INST] {output}. "
 
-    def get_hallu_reasoning_prompt_for_fox_instruct(self, input_infor, is_hallucination, reason):
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant.",
-            },
-            {
-                "role": "user",
-                "content": f"According to Question/Dialogue and Knowledge, is there any hallucination in the LLM "
-                           f"Response? {input_infor}",
-            },
-            {
-                "role": "assistant",
-                "content": f"{is_hallucination}. {reason}",
-            },
-        ]
+    def get_hallu_reasoning_prompt_for_fox_instruct(self, input_infor, is_hallucination, reason, is_inference=False):
+        if is_inference:
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant.",
+                },
+                {
+                    "role": "user",
+                    "content": f"According to Question/Dialogue and Knowledge, is there any hallucination in the LLM "
+                               f"Response? {input_infor}",
+                }
+            ]
+        else:
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant.",
+                },
+                {
+                    "role": "user",
+                    "content": f"According to Question/Dialogue and Knowledge, is there any hallucination in the LLM "
+                               f"Response? {input_infor}",
+                },
+                {
+                    "role": "assistant",
+                    "content": f"{is_hallucination}. {reason}",
+                },
+            ]
         prompt = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
-            add_generation_prompt=False,
+            add_generation_prompt=is_inference,
             # chat_template=template,
             # add_generation_prompt=False for training;
             # add_generation_prompt=True for generation/inference
