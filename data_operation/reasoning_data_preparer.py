@@ -4,6 +4,21 @@ from utils.file_operations import write_hf_dataset_to_csv
 from utils.openai_agent import OpenAIAgent
 
 
+def get_input_information(knowledge, llm_answer, log_type, question):
+    if log_type not in ["qa", "dialogue", "summarization"]:
+        raise ValueError(f"unsupported log type: {log_type}")
+    knowledge_template = "Knowledge"
+    if log_type == "qa":
+        question_template = "Question"
+    elif log_type == "dialogue":
+        question_template = "Dialogue"
+    else:
+        question_template = "Question"
+        knowledge_template = "Document"
+    information_input = f"{question_template}: {question}\n{knowledge_template}: {knowledge}\nLLM Response: {llm_answer}"
+    return information_input
+
+
 class ReasoningDataPreparer:
     def __init__(self, agent_type="fedml"):
         self.file_operator = FileOperator()
@@ -12,7 +27,7 @@ class ReasoningDataPreparer:
     def construct_input_output_pairs_for_hallu_detection(self, question, knowledge, llm_answer, log_type,
                                                          is_hallucination):
         # todo: change qa_openai -- LLM answer->LLM response
-        information_input = self.get_input_information(knowledge, llm_answer, log_type, question)
+        information_input = get_input_information(knowledge, llm_answer, log_type, question)
         if is_hallucination:
             detection_result = "Yes"
             reason = self.get_reason_for_hallucination_with_GPT(is_hallucination=is_hallucination,
@@ -21,20 +36,6 @@ class ReasoningDataPreparer:
             detection_result = "No"
             reason = ""
         return {"input": information_input, "is_hallucination": detection_result, "reason": reason}
-
-    def get_input_information(self, knowledge, llm_answer, log_type, question):
-        if log_type not in ["qa", "dialogue", "summarization"]:
-            raise ValueError(f"unsupported log type: {log_type}")
-        knowledge_template = "Knowledge"
-        if log_type == "qa":
-            question_template = "Question"
-        elif log_type == "dialogue":
-            question_template = "Dialogue"
-        else:
-            question_template = "Question"
-            knowledge_template = "Document"
-        information_input = f"{question_template}: {question}\n{knowledge_template}: {knowledge}\nLLM response: {llm_answer}"
-        return information_input
 
     @staticmethod
     def _get_GPT_prompt_for_halu_reasoning(is_hallucination, input):

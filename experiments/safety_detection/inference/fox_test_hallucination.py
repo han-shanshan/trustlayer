@@ -1,12 +1,6 @@
-from datasets import Dataset
-
-from data_operation.data_file_operator import FileOperator
-from data_operation.data_loader import DataLoader
-
-from data_operation.reasoning_data_preparer import ReasoningDataPreparer
+from data_operation.reasoning_data_preparer import get_input_information
 from inference.reasoning_inference_engine import ReasoningInferenceEngine
 from utils.constants import FOX_INSTRUCT, HALLUCINATION_REASONING_TASK
-from inference.inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7'
@@ -16,7 +10,7 @@ MODEL_NAME = FOX_INSTRUCT
 
 
 def a_single_inference():
-    input_information = ReasoningDataPreparer().get_input_information(
+    input_information = get_input_information(
         question="[Human]: Do you like Iron Man [Assistant]: Sure do! Robert Downey Jr. is a favorite. [Human]: Yes i "
                  "like him too did you know he also was in Zodiac a crime fiction film.",
         knowledge="Iron Man is starring Robert Downey Jr.Robert Downey Jr. starred in Zodiac (Crime Fiction "
