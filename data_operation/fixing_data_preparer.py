@@ -19,6 +19,7 @@ class FixingDataPreparer:
             dataset = load_dataset("pminervini/HaluEval", subset_name)["data"]
             print(f"dataset11111 = {dataset}")
             split_token = "Question:"
+            doc_token = "Knowledge: "
             # dataset = dataset.select(range(5))  # for testing
             if subset_name == "dialogue":
                 dataset = dataset.rename_column('dialogue_history', 'question')
@@ -31,6 +32,7 @@ class FixingDataPreparer:
                 dataset = dataset.rename_column('right_summary', 'right_answer')
                 dataset = dataset.rename_column('hallucinated_summary', 'hallucinated_answer')
                 dataset = dataset.rename_column('document', 'knowledge')
+                doc_token = "Document: "
 
             dataset.filter(lambda example: example['question'] is not None and example["knowledge"] is not None
                                            and example["right_answer"] is not None and example[
@@ -41,18 +43,15 @@ class FixingDataPreparer:
                                                                             folder_name, data_file_name)['train']
             reasoning_dataset = reasoning_dataset.filter(lambda example: example['is_hallucination'] == 'Yes')
             reasoning_dataset = reasoning_dataset.map(
-                lambda example: {'question': example['input'].split("\nKnowledge: ")[0].split(split_token)[1].strip(),
+                lambda example: {'question': example['input'].split(f"\n{doc_token}")[0].split(split_token)[1].strip(),
                                  'answer': example['input'].split("\nLLM response: ")[1].strip()})
             dataset = merge_datasets_on_column_names(dataset_a=dataset,
                                                      dataset_b=reasoning_dataset,
                                                      kept_columns_in_b=['question', 'answer', 'reason'],
                                                      left_on_columns=['question', 'hallucinated_answer'],
                                                      right_on_columns=['question', 'answer'])
-            print(f"dataset = {dataset}")
             dataset = dataset.rename_column('reason', 'hallucination_reason')
             dataset = dataset.remove_columns(['answer'])
-            print(f"dataset = {dataset}")
-            print(f"dataset = {dataset[999]}")
             write_hf_dataset_to_csv(dataset_to_store=dataset, is_append_mode=False,
                                     csv_file_path=self.data_reader.get_file_path('..', 'cache', 'downloaded_data',
                                                                                  dataset_name, 'fixing_training_data',
@@ -62,5 +61,5 @@ class FixingDataPreparer:
 
 if __name__ == '__main__':
     # FixingDataPreparer().process_reasoning_data_for_hallucination("HaluEval-qa")
-    FixingDataPreparer().process_reasoning_data_for_hallucination("HaluEval-dialogue")
-    # dataset = FixingDataPreparer().process_reasoning_data_for_hallucination("HaluEval-summarization")
+    # FixingDataPreparer().process_reasoning_data_for_hallucination("HaluEval-dialogue")
+    dataset = FixingDataPreparer().process_reasoning_data_for_hallucination("HaluEval-summarization")

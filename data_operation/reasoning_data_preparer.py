@@ -15,7 +15,7 @@ def get_input_information(knowledge, llm_answer, log_type, question):
     else:
         question_template = "Question"
         knowledge_template = "Document"
-    information_input = f"{question_template}: {question}\n{knowledge_template}: {knowledge}\nLLM Response: {llm_answer}"
+    information_input = f"{question_template}: {question}\n{knowledge_template}: {knowledge}\nLLM response: {llm_answer}"
     return information_input
 
 
