@@ -22,7 +22,7 @@ https://huggingface.co/datasets/lmsys/toxic-chat
 
 if __name__ == '__main__':
     # https://huggingface.co/docs/transformers/main/en/peft
-    # run_id = wandb.init(project=f"{TASK_NAME} with FOX")
+    run_id = wandb.init(project=f"{TASK_NAME} with FOX")
     torch.cuda.empty_cache()
     dataset_types = [
         # "rag-hallucination1000", # 1000 in total
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     trainer = HallucinationReasoningTrainingEngine(base_model_name=MODEL_NAME, task_name=TASK_NAME,
                                                    config={"dataset_types": dataset_types,
                                                            "data_num_dict": data_num_dict})
-    trainer.process(batch_size=16)
+    trainer.process(batch_size=1)
     # trainer.train()
     # text = "i'm happy hahaha"
     #

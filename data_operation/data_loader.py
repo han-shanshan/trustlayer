@@ -150,8 +150,8 @@ class DataLoader:
                 if "label" in sub_data.column_names:
                     meta["test_label_1"], meta["test_label_0"], meta["test_total"] = self.count_label_numbers(sub_data)
             dataset_label_counter_meta[dataset_type] = meta
-        write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt",
-                                   dictionary=dataset_label_counter_meta)
+        # write_a_dictionary_to_file(file_name="../training/dataset_label_counter_meta.txt",
+        #                            dictionary=dataset_label_counter_meta)
         return training_dataset, validation_dataset, test_dataset
 
     @staticmethod

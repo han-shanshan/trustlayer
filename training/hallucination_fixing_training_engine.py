@@ -1,14 +1,17 @@
 from datasets import load_metric
-from transformers import EarlyStoppingCallback
+from training.hallucination_reasoning_training_engine import DataCollatorForCompletionOnlyLM
+from transformers import EarlyStoppingCallback, AutoModelForCausalLM
 from transformers import Trainer
-from data_operation.reasoning_data_loader import ReasoningDataLoader
+from peft import get_peft_model
+import torch
 from training.classification_training_engine import CustomCallback
-from training.hallucination_reasoning_training_engine import HallucinationReasoningTrainingEngine
 from training.training_config_manager import TrainingConfigManager
-from utils.constants import FOX_INSTRUCT
+from training.training_engine import TrainingEngine
+from utils.constants import FOX_INSTRUCT, FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE
 from data_operation.data_processor import DataProcessor
 import evaluate
 from datetime import datetime
+from data_operation.reasoning_data_loader import ReasoningDataLoader
 from utils.util import get_tokenizer
 
 # accuracy = evaluate.load("accuracy")
@@ -19,10 +22,11 @@ f1_metric = load_metric("f1", trust_remote_code=True)
 roc_auc_metric = evaluate.load("roc_auc", trust_remote_code=True)
 
 
-class HallucinationFixingTrainingEngine(HallucinationReasoningTrainingEngine):
+class HallucinationFixingTrainingEngine(TrainingEngine):
     def __init__(self, base_model_name, task_name, config=None):
         super().__init__(base_model_name, task_name, config)
-        self.data_processor = DataProcessor(task_name=self.task_name)
+        # self.data_processor = DataProcessor(task_name=self.task_name)
+        self.task = task_name
         if self.config is not None:
             if "dataset_types" in self.config:
                 self.dataset_types = self.config["dataset_types"]
@@ -32,6 +36,37 @@ class HallucinationFixingTrainingEngine(HallucinationReasoningTrainingEngine):
                 self.data_num_dict = self.config["data_num_dict"]
             else:
                 self.data_num_dict = None
+
+
+    def get_pretrained_model(self):
+        model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
+                                                     # device_map="auto",
+                                                     torch_dtype=torch.float32,
+                                                     trust_remote_code=True)
+        model.config.pad_token_id = model.config.eos_token_id
+        model.enable_input_require_grads()
+        # this line solves the bug: RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
+        # model.config.use_cache = False
+
+        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=self.base_model_name))
+        model.print_trainable_parameters()  # see % trainable parameters
+
+        return model
+
+    def get_encoded_dataset(self, dataset, tokenizer):
+        print(f"before enocding = {dataset}")
+
+        def tokenize_function(examples):
+            inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1, return_tensors='pt')
+            return inputs
+
+        # dataset.cleanup_cache_files()
+        encoded_dataset = dataset.map(tokenize_function, batched=True, remove_columns=dataset["train"].column_names)
+        encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
+        print(f"encoded_dataset = {encoded_dataset}")
+        return encoded_dataset
+
+
 
     def get_training_data(self, idx=None, tokenizer=None):
         data_loader = ReasoningDataLoader(tokenizer=tokenizer)
@@ -49,13 +84,16 @@ class HallucinationFixingTrainingEngine(HallucinationReasoningTrainingEngine):
 
     def train(self, model, encoded_dataset, batch_size=32, idx=None, tokenizer=None):
         output_dir = self.base_model_name.split("/")[-1] + "-" + self.task_name + "-" + idx
+        print(f"encoded_dataset[train] = {encoded_dataset['train']}")
         peft_trainer = Trainer(
             model=model,
             args=TrainingConfigManager.get_training_config(output_dir=output_dir,
                                                            task_name=self.task_name, batch_size=batch_size),
             train_dataset=encoded_dataset["train"],  # training dataset requires column input_ids
             eval_dataset=encoded_dataset["validation"],
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()]
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=3), CustomCallback()],
+            data_collator=DataCollatorForCompletionOnlyLM(tokenizer=tokenizer, mlm=False,
+                                                          response_template=FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE)
         )
         peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
@@ -67,6 +105,9 @@ class HallucinationFixingTrainingEngine(HallucinationReasoningTrainingEngine):
         tokenizer = get_tokenizer(self.base_model_name)
         model.resize_token_embeddings(len(tokenizer))
         dataset = self.get_training_data(idx=t, tokenizer=tokenizer)
+        print(f"sample data in training: {dataset['train'][0]}")
+        print(f"sample data in validation: {dataset['validation'][0]}")
+        print(f"sample data in test: {dataset['test'][0]}")
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
         self.train(model=model, encoded_dataset=encoded_dataset,
                    batch_size=batch_size, tokenizer=tokenizer, idx=t)

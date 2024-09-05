@@ -59,7 +59,7 @@ class ReasoningDataLoader(DataLoader):
                 },
                 {
                     "role": "user",
-                    "content": f"{question}. Here is the Document: {knowledge}",
+                    "content": f"Please help summarize the document. Here is the Document: {knowledge}",
                 },
                 {
                     "role": "assistant",
@@ -209,11 +209,12 @@ class ReasoningDataLoader(DataLoader):
         for dataset_type in dataset_types:
             if "-" in dataset_type:
                 folder_name = dataset_type.split("-")[0]
-                data_file_name = dataset_type.split("-")[1] + "_fixing.csv"
+                task_type = dataset_type.split("-")[1]
+                data_file_name = task_type + "_fixing.csv"
                 sub_dataset = self.data_reader.read_dataset_from_csv_file('..', 'cache', 'downloaded_data',
                                                                           folder_name, 'fixing_training_data',
                                                                           data_file_name)
-                sub_dataset = sub_dataset.map(lambda example: {"task_type": data_file_name})
+                sub_dataset = sub_dataset.map(lambda example: {"task_type": task_type})
             else:
                 dataset_dict_from_files = self.data_reader.read_csv_data_files('..', 'cache', 'downloaded_data',
                                                                                dataset_type)

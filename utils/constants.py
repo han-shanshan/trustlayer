@@ -5,6 +5,7 @@ GIBBERISH_TASK = "gibberish"
 UNSAFE_PROMPT_TASK = "unsafe_prompt"
 HALLUCINATION_TASK = "hallucination"
 HALLUCINATION_REASONING_TASK = "hallucination_reasoning"
+HALLUCINATION_FIXING_TASK = "hallucination_fixing"
 TOXICITY_TASK = "toxicity"
 ALL_IN_ONE_UNSAFE_CONTENTS_TASK = "all_in_one_unsafe_contents"
 

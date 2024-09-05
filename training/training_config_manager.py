@@ -1,6 +1,6 @@
 from peft import LoraConfig, TaskType
 from transformers import TrainingArguments
-from utils.constants import HALLUCINATION_REASONING_TASK, MODEL_NAME_TINYLAMMA, FOX_INSTRUCT
+from utils.constants import HALLUCINATION_REASONING_TASK, HALLUCINATION_FIXING_TASK, MODEL_NAME_TINYLAMMA, FOX_INSTRUCT
 
 
 class TrainingConfigManager:
@@ -11,7 +11,7 @@ class TrainingConfigManager:
 
     @staticmethod
     def get_training_config(output_dir, task_name, batch_size=8):
-        if task_name == HALLUCINATION_REASONING_TASK:
+        if task_name in [HALLUCINATION_REASONING_TASK, HALLUCINATION_FIXING_TASK]:
             return TrainingArguments(
                 output_dir=output_dir,  # directory to save and repository id
                 num_train_epochs=10,  # number of training epochs
@@ -31,7 +31,8 @@ class TrainingConfigManager:
                 warmup_ratio=0.03,  # warmup ratio based on QLoRA paper
                 lr_scheduler_type="linear",
                 report_to=["wandb"],
-                load_best_model_at_end=True
+                load_best_model_at_end=True, 
+                dataloader_num_workers=3
             )
         else:
             return TrainingArguments(

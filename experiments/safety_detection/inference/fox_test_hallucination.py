@@ -53,7 +53,7 @@ if __name__ == '__main__':
     }
 
     inference_engine = ReasoningInferenceEngine(task_name=TASK_NAME, base_model=FOX_INSTRUCT,
-                                                adapter_path="./fox_adapters/Fox-Instruct-hallucination_reasoning-2-qa_and_dialogue"
+                                                adapter_path="./fox_adapters/Fox-1-1.6B-Instruct-v0.1-hallucination_reasoning-2024-07-30 19:16:49.731237-final"
                                                 )
     data_loader = ReasoningDataLoader(tokenizer=inference_engine.tokenizer)
 

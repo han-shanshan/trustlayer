@@ -218,6 +218,9 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
                                                           response_template=FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE)
             # data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
         )
+
+        print(f"trainer setting = {peft_trainer.args.parallel_mode}")
+        # exit(0)
         peft_trainer.train()
         model.save_pretrained(output_dir + "-final")
         return peft_trainer
@@ -228,6 +231,7 @@ class HallucinationReasoningTrainingEngine(TrainingEngine):
         tokenizer = get_tokenizer(self.base_model_name)
         model.resize_token_embeddings(len(tokenizer))
         dataset = self.get_training_data(idx=t, tokenizer=tokenizer)
+        print(f"===========loaded dataset: {dataset}")
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
         self.train(model=model, encoded_dataset=encoded_dataset,
                    batch_size=batch_size, tokenizer=tokenizer, idx=t)

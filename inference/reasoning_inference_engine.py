@@ -18,8 +18,8 @@ f1_metric = load_metric("f1", trust_remote_code=True)
 
 
 def compute_metrics(labels, predictions, metrics_average="macro"):
-    print(f"labels = {labels}")
-    print(f"predictions = {predictions}")
+    # print(f"labels = {labels}")
+    # print(f"predictions = {predictions}")
     accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
     precision = precision_metric.compute(predictions=predictions, references=labels, average=metrics_average)
     recall = recall_metric.compute(predictions=predictions, references=labels, average=metrics_average)
@@ -84,13 +84,16 @@ class ReasoningInferenceEngine(InferenceEngine):
     """
 
     def inference(self, text, text_pair=None, max_new_tokens=100):
+        # print(f"device = {next(self.model.parameters()).device}")
         encoded_input = self.tokenizer(text, return_tensors="pt",
                                        truncation=True, padding=True, max_length=8192, return_token_type_ids=False)
-        outputs = self.model.generate(input_ids=encoded_input.input_ids, max_new_tokens=max_new_tokens,
+        encoded_input = {key: value.to(self.device) for key, value in encoded_input.items()}
+
+        outputs = self.model.generate(input_ids=encoded_input['input_ids'], max_new_tokens=max_new_tokens,
                                       pad_token_id=self.tokenizer.eos_token_id,
                                       # temperature=0,  # Adjust temperature for more controlled randomness
                                       # top_p=0.9, early_stopping=True
-                                      attention_mask=encoded_input.attention_mask)
+                                      attention_mask=encoded_input['attention_mask'])
 
         # print(f"outputs[0] = {outputs[0]}")
         result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -160,23 +163,42 @@ class ReasoningInferenceEngine(InferenceEngine):
         # dataset.cleanup_cache_files()
         encoded_dataset = plaintext_dataset.map(tokenize_function, batched=True,
                                                 remove_columns=plaintext_dataset.column_names)
-        encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
+        # encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
         print(f"encoded_dataset = {encoded_dataset}")
+        encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
+        print(f"encoded dataset = {encoded_dataset}")
+        # labels = [1 if item == 'Yes' else 0 for item in plaintext_dataset['is_hallucination']]
+        # print(f"len labels = {len(labels)}")
+        labels = []
+
+
 
         inference_results = []
         with torch.no_grad():
             self.model.eval()
+            counter = 0
             for j in range(len(plaintext_dataset)):
                 text = plaintext_dataset[j]['text']
                 inference_result = self.inference(text=text)
 
-                if inference_result.startswith("Yes") or inference_result.startswith("yes"):
-                    inference_results.append(1)
-                elif inference_result.startswith("No") or inference_result.startswith("no"):
-                    inference_results.append(0)
+                if not (inference_result.startswith("Yes") or inference_result.startswith("yes") or inference_result.startswith("No") or inference_result.startswith("no")):
+                    print(f"inference result = {inference_result}")
+                else: 
+                    if inference_result.startswith("Yes") or inference_result.startswith("yes"):
+                        inference_results.append(1)
+                    else: # inference_result.startswith("No") or inference_result.startswith("no"):
+                        inference_results.append(0)
+                    if plaintext_dataset[j]['is_hallucination'] == "Yes":
+                        labels.append(1)
+                    else:
+                        labels.append(0)
+                    
+                counter += 1
+                if counter % 5 == 0:
+                    print(f"{counter} inferences are done. ")
         # print(f"real results = {plaintext_dataset['is_hallucination']}")
         # print(f"inference results = {inference_results}")
-        labels = [1 if item == 'Yes' else 0 for item in plaintext_dataset['is_hallucination']]
+
         print(compute_metrics(labels=labels, predictions=inference_results))
 
 
