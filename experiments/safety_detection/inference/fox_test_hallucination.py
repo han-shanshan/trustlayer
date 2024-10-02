@@ -3,6 +3,7 @@ from inference.reasoning_inference_engine import ReasoningInferenceEngine
 from utils.constants import FOX_INSTRUCT, HALLUCINATION_REASONING_TASK
 import os
 
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7'
 
 TASK_NAME = HALLUCINATION_REASONING_TASK

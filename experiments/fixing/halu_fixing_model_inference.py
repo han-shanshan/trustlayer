@@ -3,6 +3,7 @@ from inference.generation_inference_engine import GenerationInferenceEngine
 from inference.reasoning_inference_engine import ReasoningInferenceEngine
 from utils.constants import FOX_INSTRUCT, HALLUCINATION_REASONING_TASK, GENERATION_TASK
 import os
+from datasets import Dataset
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7'
 
@@ -34,6 +35,14 @@ MODEL_NAME = FOX_INSTRUCT
 #     print(inference_engine.inference(prompt))
 
 
+def get_consistent_score(data):
+    for item in data:
+        if item['label'] == 'consistent':
+            return item['score']
+    return 0
+
+
+
 """
 training data: https://huggingface.co/datasets/deepset/prompt-injections
 """
@@ -42,12 +51,12 @@ if __name__ == '__main__':
 
     dataset_types = [
         "HaluEval-qa",
-        "HaluEval-dialogue",
+        # "HaluEval-dialogue",
         # "HaluEval-summarization"
     ]
     data_num_dict = {
         "HaluEval-qa": {"train": 8000, "validation": 1000, "test": 1000},
-        "HaluEval-dialogue": {"train": 8000, "validation": 1000, "test": 1000},
+        # "HaluEval-dialogue": {"train": 8000, "validation": 1000, "test": 1000},
         # "HaluEval-summarization": {"train": 8000, "validation": 1000, "test": 1000},
         # "rag-hallucination1000": {"train": 500, "validation": 20, "test": 0},
     }
@@ -60,43 +69,54 @@ if __name__ == '__main__':
 
     print(f"test data = {test_dataset}")
     print(f"============{test_dataset[10]}")
-    data_record = test_dataset[0]
 
     from transformers import pipeline, AutoTokenizer
 
     halu_detection_pipe = pipeline("text-classification", trust_remote_code=True,
                                    model="vectara/hallucination_evaluation_model",
                                    tokenizer=AutoTokenizer.from_pretrained('google/flan-t5-base'))
-
-
-    print(f"data_record: {data_record}")
-
     prompt = "<pad> Determine if the hypothesis is true given the premise?\n\nPremise: {text1}\n\nHypothesis: {text2}"
-    res = "--- If you're a fan of animated adventure films, you might also like The Incredibles. It's set in the African savannah and features plenty of amazing animal characters. "
+    scores = []
 
-    input_pairs = prompt.format(text1=data_record['right_answer'], text2=res)
+    # test_dataset = Dataset.from_dict(test_dataset[:2])
 
-    full_scores = halu_detection_pipe(input_pairs, top_k=None)
-    print(full_scores)
+    for data_record in test_dataset:
+        res = inference_engine.inference(record=data_record)
+        print(f"data_record['right_answer'] = {data_record['right_answer']}")
+        print(f"res = {res}")
+        input_pairs = prompt.format(text1=data_record['right_answer'], text2=res)
+        full_scores = halu_detection_pipe(input_pairs, top_k=None)
+        score = get_consistent_score(full_scores)  # consistent score
 
-    simple_scores = [score_dict['score'] for score_for_both_labels in full_scores for score_dict in
-                     score_for_both_labels if score_dict['label'] == 'consistent']
+        print(score)
+        scores.append(score)
 
-    print(simple_scores)
-
-
-    #
-    #
-    # res = inference_engine.inference(record=data_record)
-    # print(f"===={data_record['right_answer']}")
-    # print(f"--- {res}")
-
-
+    print(scores)
+    count = sum(1 for num in scores if num > 0.5)
+    print(count)
 
 
 
-    # scores = halu_detection_pipe([(data_record['right_answer'], res)])
-    #
-    # print(f"right answer = {data_record[data_record['right_answer']]}")
-    # print(f"res = {res}")
-    # print(f"scores = {scores}")
+
+
+        # simple_scores = [score_dict['score'] for score_for_both_labels in full_scores for score_dict in
+        #                  score_for_both_labels if score_dict['label'] == 'consistent']
+        #
+        # print(simple_scores)
+
+
+        #
+        #
+        #
+        # print(f"===={data_record['right_answer']}")
+        # print(f"--- {res}")
+
+
+
+
+
+        # scores = halu_detection_pipe([(data_record['right_answer'], res)])
+        #
+        # print(f"right answer = {data_record[data_record['right_answer']]}")
+        # print(f"res = {res}")
+        # print(f"scores = {scores}")
