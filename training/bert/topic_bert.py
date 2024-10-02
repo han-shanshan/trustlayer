@@ -1,5 +1,5 @@
 from utils.constants import TOPIC_TASK, MODEL_NAME_BERT_BASE
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'

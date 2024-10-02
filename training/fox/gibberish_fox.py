@@ -1,5 +1,5 @@
 from utils.constants import GIBBERISH_TASK, FOX_INSTRUCT
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'

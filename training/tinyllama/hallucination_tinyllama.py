@@ -1,5 +1,5 @@
 from utils.constants import MODEL_NAME_TINYLAMMA, HALLUCINATION_TASK
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5'

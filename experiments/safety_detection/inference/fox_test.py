@@ -1,6 +1,6 @@
 from experiments.safety_detection.inference.detoxify_test import prepare_toxic_chat_test_data
 from utils.constants import FOX_INSTRUCT, ALL_IN_ONE_UNSAFE_CONTENTS_TASK
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 
 

@@ -1,6 +1,6 @@
 from datasets import Dataset, load_metric
 from transformers import AutoModelForCausalLM
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import torch
 
 """

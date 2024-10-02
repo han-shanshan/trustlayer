@@ -13,6 +13,7 @@ import evaluate
 from datetime import datetime
 from data_operation.reasoning_data_loader import ReasoningDataLoader
 from utils.util import get_tokenizer
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 # accuracy = evaluate.load("accuracy")
 accuracy_metric = load_metric("accuracy", trust_remote_code=True)
@@ -37,27 +38,12 @@ class HallucinationFixingTrainingEngine(TrainingEngine):
             else:
                 self.data_num_dict = None
 
-
-    def get_pretrained_model(self):
-        model = AutoModelForCausalLM.from_pretrained(self.base_model_name, load_in_8bit=False,
-                                                     # device_map="auto",
-                                                     torch_dtype=torch.float32,
-                                                     trust_remote_code=True)
-        model.config.pad_token_id = model.config.eos_token_id
-        model.enable_input_require_grads()
-        # this line solves the bug: RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
-        # model.config.use_cache = False
-
-        model = get_peft_model(model, TrainingConfigManager.get_lora_config(model_name=self.base_model_name))
-        model.print_trainable_parameters()  # see % trainable parameters
-
-        return model
-
     def get_encoded_dataset(self, dataset, tokenizer):
         print(f"before enocding = {dataset}")
 
         def tokenize_function(examples):
-            inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1, return_tensors='pt')
+            inputs = tokenizer(examples["text"], truncation=True, padding=True, max_length=8192 + 1,
+                               return_tensors='pt')
             return inputs
 
         # dataset.cleanup_cache_files()
@@ -65,8 +51,6 @@ class HallucinationFixingTrainingEngine(TrainingEngine):
         encoded_dataset = encoded_dataset.filter(lambda x: len(x["input_ids"]) <= 8192)
         print(f"encoded_dataset = {encoded_dataset}")
         return encoded_dataset
-
-
 
     def get_training_data(self, idx=None, tokenizer=None):
         data_loader = ReasoningDataLoader(tokenizer=tokenizer)
@@ -99,15 +83,25 @@ class HallucinationFixingTrainingEngine(TrainingEngine):
         model.save_pretrained(output_dir + "-final")
         return peft_trainer
 
-    def process(self, batch_size=16):
+    def process(self, batch_size=16, rank=0, world_size=1):
         t = str(datetime.now())
         model = self.get_pretrained_model()
         tokenizer = get_tokenizer(self.base_model_name)
         model.resize_token_embeddings(len(tokenizer))
+        # model.to(rank)  # Move model to GPU
+        # model = DDP(model, device_ids=[rank])  # Wrap model in DDP
         dataset = self.get_training_data(idx=t, tokenizer=tokenizer)
+
+
+        #
+        # train_sampler = DistributedSampler(dataset['train'], num_replicas=world_size, rank=rank)
+        # # Create DataLoader
+        # train_loader = DataLoader(dataset['train'], sampler=train_sampler, batch_size=8)
+
         print(f"sample data in training: {dataset['train'][0]}")
         print(f"sample data in validation: {dataset['validation'][0]}")
         print(f"sample data in test: {dataset['test'][0]}")
+        exit(0)
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
         self.train(model=model, encoded_dataset=encoded_dataset,
                    batch_size=batch_size, tokenizer=tokenizer, idx=t)

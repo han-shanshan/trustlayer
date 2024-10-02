@@ -2,7 +2,7 @@ from typing import Union, Optional
 
 from customized_hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from utils.constants import CUSTOMER_HALLUCINATION_TASK
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 from safety_detection.securellm.detector_base import BaseTrustDetector
 
 

@@ -1,5 +1,5 @@
 from utils.constants import FOX_INSTRUCT, ALL_IN_ONE_UNSAFE_CONTENTS_TASK
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '5'

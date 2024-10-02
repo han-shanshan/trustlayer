@@ -1,5 +1,5 @@
 from utils.constants import MODEL_NAME_BERT_BASE
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 
 TASK_NAME = "semantic"
 MODEL_NAME = MODEL_NAME_BERT_BASE  # "prajjwal1/bert-small" #"nlptown/bert-base-multilingual-uncased-sentiment" # "prajjwal1/bert-small"

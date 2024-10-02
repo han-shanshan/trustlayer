@@ -1,5 +1,5 @@
 from utils.constants import HALLUCINATION_TASK, MODEL_NAME_BERT_BASE
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 import os
 import torch
 

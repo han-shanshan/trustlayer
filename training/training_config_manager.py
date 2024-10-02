@@ -32,7 +32,7 @@ class TrainingConfigManager:
                 lr_scheduler_type="linear",
                 report_to=["wandb"],
                 load_best_model_at_end=True, 
-                dataloader_num_workers=3
+                # dataloader_num_workers=3
             )
         else:
             return TrainingArguments(

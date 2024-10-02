@@ -1,5 +1,5 @@
 from utils.constants import GIBBERISH_TASK, MODEL_NAME_TINYLAMMA
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 import os
 

@@ -3,7 +3,7 @@ from customized_hallucination_pipeline.offline_processing.hallucination_training
 from customized_hallucination_pipeline.test_use_case import HALLUCINATION_INFERENCE_CONFIG
 from utils.constants import CUSTOMER_HALLUCINATION_TASK, MODEL_NAME_TINYLAMMA, MODEL_NAME_BERT_BASE, \
     FOX_INSTRUCT
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 from transformers import AutoModelForSequenceClassification
 from transformers import Trainer

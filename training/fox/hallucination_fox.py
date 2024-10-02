@@ -1,5 +1,5 @@
 from utils.constants import HALLUCINATION_TASK, FOX_INSTRUCT
-from inference.inference_engine import InferenceEngine
+from inference.classification_inference_engine import InferenceEngine
 from training.training_engine import TrainingEngine
 import os
 
