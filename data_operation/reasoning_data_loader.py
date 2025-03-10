@@ -39,7 +39,7 @@ class ReasoningDataLoader(DataLoader):
                 },
                 {
                     "role": "user",
-                    "content": f"Could you answer the question: {question}. Here is the knowledge: {knowledge}",
+                    "content": f"{question}. \nHere is the knowledge you can use: {knowledge}",
                 },
                 {
                     "role": "assistant",
@@ -59,7 +59,7 @@ class ReasoningDataLoader(DataLoader):
                 },
                 {
                     "role": "user",
-                    "content": f"Please help summarize the document. Here is the Document: {knowledge}",
+                    "content": f"Please help summarize the document. Here is the Document: \"{knowledge}\"",
                 },
                 {
                     "role": "assistant",
@@ -67,7 +67,7 @@ class ReasoningDataLoader(DataLoader):
                 },
                 {
                     "role": "user",
-                    "content": f"There is hallucination in the summarization, here is the reason: {hallucination_reason}. "
+                    "content": f"There is hallucination in the summarization, here is the reason: \"{hallucination_reason}\". "
                                f"Please fix your answer. ",
                 },
             ]
@@ -89,8 +89,7 @@ class ReasoningDataLoader(DataLoader):
         )
         return prompt
 
-    def get_hallu_fixing_data_for_fox_instruct(self, training_dataset, validation_dataset, test_dataset,
-                                               is_inference=False):
+    def get_hallu_fixing_data_for_fox_instruct(self, training_dataset, validation_dataset, test_dataset):
         print(f"training_dataset = {training_dataset}")
         # knowledge	question	right_answer	hallucinated_answer	hallucination_reason
         training_dataset = training_dataset.map(lambda example: {
@@ -100,7 +99,7 @@ class ReasoningDataLoader(DataLoader):
                                                      hallucination_reason=example['hallucination_reason'],
                                                      correct_answer=example['right_answer'],
                                                      log_type=example["task_type"],
-                                                     is_inference=is_inference)})
+                                                     is_inference=False)})
         validation_dataset = validation_dataset.map(lambda example: {
             "text": self.apply_hallu_fixing_template(question=example['question'],
                                                      knowledge=example['knowledge'],
@@ -108,7 +107,7 @@ class ReasoningDataLoader(DataLoader):
                                                      hallucination_reason=example['hallucination_reason'],
                                                      correct_answer=example['right_answer'],
                                                      log_type=example["task_type"],
-                                                     is_inference=True)})  # todo
+                                                     is_inference=False)})
         test_dataset = test_dataset.map(lambda example: {
             "text": self.apply_hallu_fixing_template(question=example['question'],
                                                      knowledge=example['knowledge'],

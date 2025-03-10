@@ -35,7 +35,7 @@ class GenerationInferenceEngine(InferenceEngine):
 
     def inference(self, record, text_pair=None, max_new_tokens=100):
         prompt = self.get_generation_prompt_for_fixing(record)
-        print(f"prompt = {prompt}")
+        # print(f"prompt = {prompt}")
         encoded_input = self.tokenizer(prompt, return_tensors="pt",
                                        truncation=True, padding=True, max_length=8192, return_token_type_ids=False)
         encoded_input = {key: value.to(self.device) for key, value in encoded_input.items()}

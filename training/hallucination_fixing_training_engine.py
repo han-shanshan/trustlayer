@@ -2,13 +2,10 @@ from datasets import load_metric
 from training.hallucination_reasoning_training_engine import DataCollatorForCompletionOnlyLM
 from transformers import EarlyStoppingCallback, AutoModelForCausalLM
 from transformers import Trainer
-from peft import get_peft_model
-import torch
 from training.classification_training_engine import CustomCallback
 from training.training_config_manager import TrainingConfigManager
 from training.training_engine import TrainingEngine
 from utils.constants import FOX_INSTRUCT, FOX_INSTRUCT_REASONING_RESPONSE_TEMPLATE
-from data_operation.data_processor import DataProcessor
 import evaluate
 from datetime import datetime
 from data_operation.reasoning_data_loader import ReasoningDataLoader
@@ -101,7 +98,6 @@ class HallucinationFixingTrainingEngine(TrainingEngine):
         print(f"sample data in training: {dataset['train'][0]}")
         print(f"sample data in validation: {dataset['validation'][0]}")
         print(f"sample data in test: {dataset['test'][0]}")
-        exit(0)
         encoded_dataset = self.get_encoded_dataset(dataset=dataset, tokenizer=tokenizer)
         self.train(model=model, encoded_dataset=encoded_dataset,
                    batch_size=batch_size, tokenizer=tokenizer, idx=t)

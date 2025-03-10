@@ -62,13 +62,13 @@ if __name__ == '__main__':
     }
 
     inference_engine = GenerationInferenceEngine(task_name=TASK_NAME, base_model=FOX_INSTRUCT,
-                                                 adapter_path="./Fox-1-1.6B-Instruct-v0.1-hallucination_fixing"
+                                                 adapter_path="./Fox-1-1.6B-Instruct-v0.1-hallucination_fixing-2024-10-01 23:12:35.467978-final"
                                                  )
     training_dataset, validation_dataset, test_dataset = inference_engine.data_loader.load_hallucination_data_for_fixing(
         data_num_dict, dataset_types)
 
     print(f"test data = {test_dataset}")
-    print(f"============{test_dataset[10]}")
+    # print(f"============{test_dataset[10]}")
 
     from transformers import pipeline, AutoTokenizer
 
@@ -82,41 +82,15 @@ if __name__ == '__main__':
 
     for data_record in test_dataset:
         res = inference_engine.inference(record=data_record)
-        print(f"data_record['right_answer'] = {data_record['right_answer']}")
-        print(f"res = {res}")
+        # print(f"data_record['right_answer'] = {data_record['right_answer']}")
+        # print(f"res = {res}")
         input_pairs = prompt.format(text1=data_record['right_answer'], text2=res)
         full_scores = halu_detection_pipe(input_pairs, top_k=None)
         score = get_consistent_score(full_scores)  # consistent score
 
-        print(score)
+        print(f"full score = {full_scores}, score = {score}")
         scores.append(score)
 
     print(scores)
     count = sum(1 for num in scores if num > 0.5)
     print(count)
-
-
-
-
-
-        # simple_scores = [score_dict['score'] for score_for_both_labels in full_scores for score_dict in
-        #                  score_for_both_labels if score_dict['label'] == 'consistent']
-        #
-        # print(simple_scores)
-
-
-        #
-        #
-        #
-        # print(f"===={data_record['right_answer']}")
-        # print(f"--- {res}")
-
-
-
-
-
-        # scores = halu_detection_pipe([(data_record['right_answer'], res)])
-        #
-        # print(f"right answer = {data_record[data_record['right_answer']]}")
-        # print(f"res = {res}")
-        # print(f"scores = {scores}")
